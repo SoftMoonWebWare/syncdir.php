@@ -552,7 +552,7 @@ Element.prototype.toggleClass=toggleClass;
 
 RegExp.escape=function (string) {
 	// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions
-  return string && string.replace(/[.*+\-?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
+	return string && string.replace(/[.*+\-?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
 }
 
 // ===================================================
@@ -690,7 +690,7 @@ try {
 		'POSIX_wildcards' => check_array($_POST['filter_in']['POSIX_wildcards']) ) );
 
 
-  $_POST['CaseInsense']= ($_POST['case_sense']==="no"  or  ($_POST['case_sense']==="auto"  and  MS_WINDOWS)) ?
+	$_POST['CaseInsense']= ($_POST['case_sense']==="no"  or  ($_POST['case_sense']==="auto"  and  MS_WINDOWS)) ?
 						FNM_CASEFOLD : 0;  // this specific logic is used by Function filter() for POSIX Wildcards
 	if ($_POST['CaseInsense'])  {
 		$filters['in']['exts']=array_map('uncase', $filters['in']['exts']);
@@ -1239,7 +1239,7 @@ do { ?>
 	<?php } while ($¿isA  and  count($_POST['filter_out']['regex'])>0); ?></td>
 
 <?php if (POSIX_WILDCARDS_PATTERNS_SUPPORTED)  {
-  $¿isA=is_array($_POST['filter_out']['paths']) ?>
+	$¿isA=is_array($_POST['filter_out']['paths']) ?>
 <td><?php do { ?><input type='text' name='filter_out[POSIX_wildcards][]' value="<?php if ($¿isA)  echo array_shift($_POST['filter_out']['POSIX_wildcards']); ?>"
 	onblur='popNewField(this)' onfocus='tabbedOut=false' title='enter a POSIX Wildcard Pattern (File or Folder) (name or path) filter'>
 	<?php } while ($¿isA  and  count($_POST['filter_out']['POSIX_wildcards'])>0); ?></td><?php } ?>
@@ -1255,7 +1255,7 @@ do { ?>
 <footer>by SoftMoon WebWare © 2021</footer>
 <script type='text/javascript'>
 for (const inp of document.getElementById('recursive').elements) {
-  if (inp.checked)  {disable_AllFolders(inp.value==='no');  break;}  }
+	if (inp.checked)  {disable_AllFolders(inp.value==='no');  break;}  }
 
 for (const inp of document.getElementsByTagName('input'))  {
 	if (inp.type==='radio')  inp.parentNode.useClass('checked', inp.checked);  }
@@ -1398,10 +1398,10 @@ Function filter($filename, $path, &$filter, $logic_bool)  {
 	foreach ($filter['exts'] as $ext)  {
 		if ($ext===substr($filename, -strlen($ext)))  return $logic_bool;  }
 	foreach ($filter['regex'] as $pcre)  {
-	  if (@preg_match($pcre, $name)
+		if (@preg_match($pcre, $name)
 		or  @preg_match($pcre, $path))  return $logic_bool;  }
 	foreach ($filter['POSIX_wildcards'] as $wc)  {
-	  if (@fnmatch($wc, $name, $_POST['CaseInsense'])
+		if (@fnmatch($wc, $name, $_POST['CaseInsense'])
 		or  @fnmatch($wc, $path, $_POST['CaseInsense']))  return $logic_bool;  }
 	return !$logic_bool;  }
 
