@@ -26,7 +26,7 @@ Two or more folks work on their files within a project, updating the files on th
 Then run this utility and sync the new files to a "central project folder" on USB "thumb-drive".
 Files can be copied *to* the central project folder, as well as *from* the central project folder, in one step.
 As with folder backup, you can verify each file first if you like.
-If you have several archive folders with the many same files in each but not all,
+If you have several archive folders with many of the same files in each but not all,
 you can use syncdir.php to make one unified archive.
 It can even find the files stuffed in different folders when your archive structures are dis-similar.
 
