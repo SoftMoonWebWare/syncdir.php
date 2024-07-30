@@ -1,6 +1,6 @@
 <?php  //  charset='UTF-8'   EOL: 'UNIX'   tab spacing=2 ¡important!   word-wrap: no
 	/*/ SyncDir.php   written by and Copyright © Joe Golembieski, SoftMoon WebWare
-					 ALPHA 1.1.1  July 10, 2024
+					 ALPHA 1.2  July 29, 2024
 
 		This program is licensed under the SoftMoon Humane Use License ONLY to “humane entities” that qualify under the terms of said license.
 		For qualified “humane entities”, this program is free software:
@@ -25,26 +25,33 @@
 			https://www.gnu.org/licenses/#AGPL    /*/
 
 /*  This ALPHA release has been tested on a Windows NT system with Apache 2.0 and PHP version 7.1.6 ; 8.1.6 ; 8.2.12
-		The PHP version 8 update trashed the code … requiring additional code be added to check every array variable before using it …
-		hopefully all the necessary additions to the code were done.
-		Somehow this is supposed to make PHP better?  Faster?  HOW????
-		NO!
-		Now I have to === manually check evertything === the code touches or it produces a fatal error
-		when this used to be automatically handled in the background.
-		→ → → → → PHP is no longer suitable as an HTML-embedded language …
-			it WAS great at that since that was what it was originally designed for.  ← ← ← ← ←
-		→ → → → → PHP was NEVER suitable as a application-development language
-			due to inconsistancies & the language construct that made it GREAT AS AN HTML EMBEDDED LANGUAGE - so why try now?  ← ← ← ← ←
-		My JavaScript code from over 15 years ago still works just fine.
-		My PHP code from last month fails with every PHP update.
-		That’s OK with complied languages, but not scripts that may need to share servers with other scripts …
-		“Oh, YOUR script doesn’t play nice with MY scripts … we all need different PHP playgrounds …” kinda BS.
-		The PHP developers complain about people who bash PHP,
-		but THEY themselves are the ones who seem to hate PHP … always changing it in fundemental ways!
-		They should start their OWN language (they could call it IHATEPHP)
-		and leave PHP to be the easy-going unstrictly-typed language it was designed for that made it great and widely used for web page developement.
-		I loved PHP-embedded-HTML when I found first found PHP.  NO MORE!
-		This will likely be my last PHP-based app … only minimal support files from now on!
+ *  I’ve been using it for a while mostly without problems, except:
+ *  • I’ve seen my USB thumb-drive apparently overheat and become unresponsive.
+ *   This is a hardware problem (video driver gets hot and heats up the metal-casing on the thumb-drive 1" away)
+ *   and was solved by moving the thumb-drive to another USB port.
+ *   However, PHP “locks-up” waiting for it, and I had to close the server and browser.
+ *   It’s hard to know WHAT exactly PHP is doing…in that case I was transferring a large sum of data…
+ *   was it going slow?  Five files copied (I could see in Windows Explorer), then nothing,
+ *   and the browser just said “waiting on the server”.
+ *   Did a bug cause an endless loop?  Not in this case, but I was left guessing at first…
+ *   Note the max_execution_time is set below so PHP will not stop automatically,
+ *   so large filesets can be copied without PHP aborting before finishing.
+ *   Adjust it as you see appropriate!
+ *  • A few times the “verify first” option simply did not work.  WHY?  IDK!
+ *   I didn’t have time to dig in and start logging everything PHP did, or even try again to do so.
+ *   Other times it works perfectly.  When it fails, there is no error message,
+ *   and the HTML interface seems normal.
+ *   Just nothing gets synced/copied, as if you selected no files to sync/copy.
+ *   I've looked at the code again and again, but did not see any reason why it might fail,
+ *   other than the data did not transfer to from the browser to PHP correctly for some reason.
+ *   Playing with the filesystem while debug is not something I want to do everyday,
+ *   so IDK when I will look into that.
+ *   I think I remember trying to sync many, many, many “verified first” files at once, and it failed.
+ *   It worked when I only verified a few, if that’s a hint.
+ *   Debugging code that fails under unknown circumstances is tricky.
+ *   Doing so while your code is continuously modifying the filesystem is a real PITA!
+ *
+ *  It’s never actually skrewed up anything in the filesystem, but use at your own risk!
 */
 
 
@@ -54,7 +61,7 @@ clearstatcache(true);
 define ('TRASH_FOLDER_NAME', ".trash".DIRECTORY_SEPARATOR);  //this could be a “hidden” file as given, or have a full name.ext
 define ('TRASH_NAME_EXT', ".trash");  //should generally match the above’s extension.
 
-define ('COMINGLE', FALSE);  // ¿Show directories with files/folders comingled =OR= group folders together before files?
+define ('COMINGLE', FALSE);  // ¿Show directories with files/folders co-mingled =OR= group folders together before files?
 
 define("MS_WINDOWS", stripos(php_uname('s'), 'Win')!==FALSE);
 define('POSIX_WILDCARDS_PATTERNS_SUPPORTED', (!MS_WINDOWS  or  phpversion()>="5.3.0"));
@@ -89,7 +96,7 @@ if (!defined('FNM_CASEFOLD'))  define ('FNM_CASEFOLD', 16);  // for Function fil
 <meta charset="UTF-8">
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <meta name='author' content='Joe Golembieski, SoftMoon-WebWare'>
-<meta name='copyright' content='Copyright © 2021 Joe Golembieski, SoftMoon-WebWare'>
+<meta name='copyright' content='Copyright © 2021, 2024 Joe Golembieski, SoftMoon-WebWare'>
 <title>Synchronize Directories</title>
 <style type="text/css">
 body {
@@ -417,7 +424,6 @@ footer {
 	font-family: serif;
 	font-weight: bold; }
 </style>
-<script src='JS_toolbucket/SoftMon.WebWare/Gradient5Ch.js'></script>
 <script type='text/javascript'>
 
 const
@@ -595,7 +601,7 @@ function check_legend(fs)  {
 			return;  }  }
 	fs.querySelector('legend input').checked=true;  }
 
-// the “all folders” option is not avaiable (not logical) when the sync is not recursive
+// the “all folders” option is not available (not logical) when the sync is not recursive
 function disable_AllFolders(flag)  {
 	const lbl=document.getElementById('AllFolders');
 	lbl.useClass('disabled', flag);
@@ -721,7 +727,7 @@ try {
 
 	$dir1=read_dir($_POST['dir_1'], $filters, $_POST['recursive']==='no', $_POST['sort']==='yes');
 	$dir2=read_dir($_POST['dir_2'], $filters, $_POST['recursive']==='no', $_POST['sort']==='yes');
-	//	echo "<pre>",var_dump($dir1, $dir2),"</pre>";
+//	echo "<pre>",var_dump($dir1, $dir2),"</pre>";
 //echo "we got to here also"; exit;
 
 	switch ($_POST['submit'])  {
@@ -827,7 +833,7 @@ catch (bad_form_data $e)  {$errorHTML="<h5>".$e->getMessage()."</h5>\n";}
 	<label><input type='radio' name='find_similar' value='no' <?php
 		if ($_POST['find_similar']=="no")  echo CHKD; ?>>No</label>
 	</fieldset>
-	<fieldset><legend>Preserve original file creation time for copied file?</legend>
+	<fieldset><legend>Preserve original file “last-modified” time for copied file?</legend>
 	<label><input type='radio' name='preserveCreationTime' value='yes' <?php
 		if ($_POST['preserveCreationTime']!="no")  echo CHKD; ?>>Yes</label>
 	<label><input type='radio' name='preserveCreationTime' value='no' <?php
@@ -942,7 +948,7 @@ character-encoded using <abbr>UTF-8</abbr> may not match filters.</p>
 	<dd>will match only directory folders.&nbsp;
 	If you filter in a directory folder, its files still need to be filtered in also.</dd>
 	<dt><filename>foo<?php echo DIRECTORY_SEPARATOR; ?>*</filename></dt>
-	<dd>If you end your folder-name with an asterick, all of its sub-folders (recursively) will be included also.</dd>
+	<dd>If you end your folder-name with an asterisk, all of its sub-folders (recursively) will be included also.</dd>
 </dl></help></th>
 <th scope='col'>File &amp; Folder Paths
 	<help><span>☻</span><p>It is best to define paths from the root <?PHP echo MS_WINDOWS ? "drive (or user," : "user (or drive,"; ?>
@@ -1221,6 +1227,7 @@ do { if ($¿isA  and  ($ext=array_shift($_POST['filter_out']['exts']))!=="")  { 
 <?php $¿isA=is_array($_POST['filter_out']['files']); ?>
 	<label><input type='checkbox' name='filter_out[files][]' value='Thumbs.db'   <?php if (!$¿isA  or  in_array('Thumbs.db', $_POST['filter_out']['files']))  echo "checked";?>><filename>Thumbs.db</filename></label>
 	<label><input type='checkbox' name='filter_out[files][]' value='desktop.ini' <?php if (!$¿isA  or  in_array('desktop.ini', $_POST['filter_out']['files']))  echo "checked";?>><filename>desktop.ini</filename></label>
+	<label><input type='checkbox' name='filter_out[files][]' value='trash<?php echo DIRECTORY_SEPARATOR; ?>' <?php if (!$¿isA  or  in_array('trash'.DIRECTORY_SEPARATOR, $_POST['filter_out']['files']))  echo "checked";?>><filename>trash<?php echo DIRECTORY_SEPARATOR; ?></filename></label>
 <?php if ($¿isA)
 		$_POST['filter_out']['files']=array_diff($_POST['filter_out']['files'], array("Thumbs.db", "desktop.ini"));
 do { ?>
@@ -1252,7 +1259,7 @@ do { ?>
 <input type='submit' name='submit' value="verify first">
 <input type='submit' name='submit' value="sync ’em">
 </form>
-<footer>by SoftMoon WebWare © 2021</footer>
+<footer>by SoftMoon WebWare © 2021, 2024</footer>
 <script type='text/javascript'>
 for (const inp of document.getElementById('recursive').elements) {
 	if (inp.checked)  {disable_AllFolders(inp.value==='no');  break;}  }
@@ -1302,7 +1309,7 @@ Function check_array(&$a, $pattern=FALSE, $err_msg="")  { if ($a==NULL)  return 
 
 Function read_dir($dir, &$filters, $¿shallow=false, $¿sort=true)  {
 	if (substr($dir, -1, 1)!==DIRECTORY_SEPARATOR)  $dir.=DIRECTORY_SEPARATOR;
-	$filelist = array('.'=>$dir);
+	$filelist = array('.'=>$dir);  $file_list= array();
 	$d = dir($dir);
 	while (false !== ($entry = $d->read()))  {
 		if ($entry==='.'  or  $entry==='..'  or  $entry===""
@@ -1313,25 +1320,25 @@ Function read_dir($dir, &$filters, $¿shallow=false, $¿sort=true)  {
 			$filelist['/'][$entry] = null;  }
 		else {
 			$filelist[] = $entry;
+			$file_list[] = $entry;
 			$filelist['?'][] = $srch_val;  }  }
 	$d->close();
-/*
-echo SORT_LOCALE_STRING, "  ",  SORT_NATURAL, "  ", ($_POST['CaseInsense'] ? SORT_FLAG_CASE : 0);
-	if ($¿sort)  array_multisort(
-								$filelist,
-								SORT_ASC,
-								$¿sort=SORT_NATURAL | ($_POST['CaseInsense'] ? SORT_FLAG_CASE : 0),
-								$filelist['?']);
- */
+	if ($¿sort  &&  count($file_list))
+		array_multisort(
+			$file_list,
+			SORT_ASC,
+			$¿sort=SORT_NATURAL | ($_POST['CaseInsense'] ? SORT_FLAG_CASE : 0),
+			$filelist['?'] );
 	if (isset($filelist['/']))  {
-		//if ($¿sort)  asort($filelist['/'], $¿sort);
-		foreach ($filelist['/'] as $subdir => &$d)  {$d = read_dir($dir.$subdir, $filters, $¿shallow);  }  }
+		if ($¿sort)  ksort($filelist['/'], $¿sort);
+		foreach ($filelist['/'] as $subdir => &$d)  {$d = read_dir($dir.$subdir, $filters, $¿shallow, $¿sort);  }  }
 	return $filelist;  }
+
 
 // find directory entries that are in $dir1 that are not in $dir2
 // (make sure they are the same file - length -)
 // or possibly if the age of a file in $dir1 is - younger - than the same file in $dir2
-Function find_unique(&$dir1, &$dir2, $¿ignore_age=true)  {
+Function find_unique(&$dir1, &$dir2, $¿ignore_age=true, $subpath=DIRECTORY_SEPARATOR)  {
 	// NOTE: filesize() is accurate up to 2GB on 32bit systems, 4GB on 64bit systems; but still works for comparisons up to 4GB.
 	$unique=array('names'=>array(), '?'=>array(), 'sizes'=>array(), 'paths'=>array());
 	if (is_array($dir1['?']))  foreach ($dir1['?'] as $k => $filename)  {
@@ -1346,30 +1353,33 @@ Function find_unique(&$dir1, &$dir2, $¿ignore_age=true)  {
 		$unique['?'][]=$filename;
 		$unique['sizes'][]=filesize($path1);
 		$unique['paths'][]=$path1;
+		$unique['subpaths'][]=$subpath;
 		$unique['replaced'][]= is_numeric($k2);  }
 	if (isset($dir1['/']))  {
 		$dir2subs= (isset($dir2['/']) ? $dir2['/'] : array());
 		foreach ($dir1['/'] as $dirname => $subdir1)  {
 			$subdir2=isset($dir2subs[$dirname]) ? $dir2subs[$dirname] : array();
 			$unique=array_merge_recursive( $unique,
-				find_unique($subdir1, $subdir2, $¿ignore_age) );  }  }
+				find_unique($subdir1, $subdir2, $¿ignore_age, $subpath.$dirname.DIRECTORY_SEPARATOR) );  }  }
 	return $unique;  }
 
-Function find_misplaced(&$unique, &$dir)  {
+Function find_misplaced(&$unique, &$dir, $subpath=DIRECTORY_SEPARATOR)  {
 	if (!is_array($unique['similars']))  $unique['similars']=array();
 	if (is_array($dir['?']))
 		foreach ($dir['?'] as $dk => $filename)  {
 			$path=$dir['.'].$dir[$dk];
 			if (count($keys=array_keys($unique['?'], $filename)))
 				foreach ($keys as $uk)  {
+					if ($subpath===$unique['subpaths'][$uk])  continue;
 					if (!is_array($unique['similars'][$uk]))  $unique['similars'][$uk]=array();
 					if (!in_array($path, $unique['similars'][$uk]))  $unique['similars'][$uk][]=$path;  }
 			if (count($keys=array_keys($unique['sizes'], filesize($path))))
 				foreach ($keys as $uk)  {
+					if ($subpath===$unique['subpaths'][$uk])  continue;
 					if (!is_array($unique['similars'][$uk]))  $unique['similars'][$uk]=array();
 					if (!in_array($path, $unique['similars'][$uk]))  $unique['similars'][$uk][]=$path;  }  }
 	if (is_array($dir['/']))
-		foreach ($dir['/'] as $subdir)  {find_misplaced($unique, $subdir);}  }
+		foreach ($dir['/'] as $dirname => $subdir)  {find_misplaced($unique, $subdir, $subpath.$dirname.DIRECTORY_SEPARATOR);}  }
 
 
 Function filter_file($filename, $path, &$filters, &$srch_val)  {
