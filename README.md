@@ -71,6 +71,8 @@ Use syncdir.php from the start.
 
 When syncdir.php shows you files to be / that have been synced, it will highlight files in red that overwrite files in the destination folder.
 
+When "similar files" are found, click on the ▼ down-arrow to see them, the ▲ up-arrow to hide them.
+
 When using Windows, many times the OS tells PHP the filesize in KBs, MBs, etc., i.e. a “rounded estimate” instead of an exact number of bytes.
 This can flubber the “find similar files” algorithm a bit, and it may show you completely unrealted files.
 I want to be able to identify files that have had their names changed, even having been put into a different folder tree structure,
@@ -99,8 +101,8 @@ I’ve been using it for a while mostly without problems, except:
  and the HTML interface seems normal.
  Just nothing gets synced/copied, as if you selected no files to sync/copy.
  I've looked at the code again and again, but did not see any reason why it might fail,
- other than the data did not transfer to from the browser to PHP correctly for some reason.
- Playing with the filesystem while debug is not something I want to do everyday,
+ other than the data did not transfer from the browser to PHP correctly for some reason.
+ Playing with the filesystem while debugging is not something I want to do everyday,
  so IDK when I will look into that.
  I think I remember trying to sync many, many, many “verified first” files at once, and it failed.
  It worked when I only verified a few, if that’s a hint.
