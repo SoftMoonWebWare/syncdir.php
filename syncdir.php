@@ -1,6 +1,6 @@
 <?php  //  charset='UTF-8'   EOL: 'UNIX'   tab spacing=2 ¡important!   word-wrap: no
 	/*/ SyncDir.php   written by and Copyright © Joe Golembieski, SoftMoon WebWare
-					 ALPHA 1.2  July 29, 2024
+					 ALPHA 1.2.1  July 30, 2024
 
 		This program is licensed under the SoftMoon Humane Use License ONLY to “humane entities” that qualify under the terms of said license.
 		For qualified “humane entities”, this program is free software:
@@ -43,11 +43,11 @@
  *   and the HTML interface seems normal.
  *   Just nothing gets synced/copied, as if you selected no files to sync/copy.
  *   I've looked at the code again and again, but did not see any reason why it might fail,
- *   other than the data did not transfer to from the browser to PHP correctly for some reason.
- *   Playing with the filesystem while debug is not something I want to do everyday,
+ *   other than the data did not transfer from the browser to PHP correctly for some reason.
+ *   Playing with the filesystem while debugging is not something I want to do everyday,
  *   so IDK when I will look into that.
  *   I think I remember trying to sync many, many, many “verified first” files at once, and it failed.
- *   It worked when I only verified a few, if that’s a hint.
+ *   It worked when I only verified a few files, if that’s a hint.
  *   Debugging code that fails under unknown circumstances is tricky.
  *   Doing so while your code is continuously modifying the filesystem is a real PITA!
  *
@@ -89,6 +89,15 @@ define ('EXPANDER',
 	'<span class="expand" onclick="this.parentNode.addClass(\'expand\')">▼</span><span onclick="this.parentNode.removeClass(\'expand\')">▲</span>'	);
 
 if (!defined('FNM_CASEFOLD'))  define ('FNM_CASEFOLD', 16);  // for Function filter()
+
+/*
+$foo=array("foo"=>"fazz", 7, 5,"sing"=>"soft", 9, 2, 0,"fing"=>"fong", 8, 1, 4);
+$bar=array(17,45,29,72,90,"sing"=>"loud",38,81,54,"bar"=>"bazz","bing"=>"bong");
+$gek=array_multisort($foo, $bar);
+echo var_dump($foo),"<br><br>",var_dump($bar),"<br><br>";
+*/
+
+
 ?>
 <!DOCTYPE html>
 <html>
@@ -1309,29 +1318,30 @@ Function check_array(&$a, $pattern=FALSE, $err_msg="")  { if ($a==NULL)  return 
 
 Function read_dir($dir, &$filters, $¿shallow=false, $¿sort=true)  {
 	if (substr($dir, -1, 1)!==DIRECTORY_SEPARATOR)  $dir.=DIRECTORY_SEPARATOR;
-	$filelist = array('.'=>$dir);  $file_list= array();
+	$filelist = array();  $filepaths = array();  $subdirs=array();
 	$d = dir($dir);
 	while (false !== ($entry = $d->read()))  {
 		if ($entry==='.'  or  $entry==='..'  or  $entry===""
 		or  filter_file($entry, $dir.$entry, $filters, $srch_val))  continue;
 		if (is_dir($dir.$entry))  {                  // ↑ value is returned
 			if ($¿shallow)  continue;
-			if (!isset($filelist['/']))  $filelist['/']=array();
-			$filelist['/'][$entry] = null;  }
+			$subdirs[$entry] = null;  }
 		else {
 			$filelist[] = $entry;
-			$file_list[] = $entry;
-			$filelist['?'][] = $srch_val;  }  }
+			$filepaths[] = $srch_val;  }  }
 	$d->close();
-	if ($¿sort  &&  count($file_list))
+	if ($¿sort  &&  count($filelist))  {
 		array_multisort(
-			$file_list,
+			$filelist,
 			SORT_ASC,
 			$¿sort=SORT_NATURAL | ($_POST['CaseInsense'] ? SORT_FLAG_CASE : 0),
-			$filelist['?'] );
-	if (isset($filelist['/']))  {
-		if ($¿sort)  ksort($filelist['/'], $¿sort);
-		foreach ($filelist['/'] as $subdir => &$d)  {$d = read_dir($dir.$subdir, $filters, $¿shallow, $¿sort);  }  }
+			$filepaths );  }
+	if (count($subdirs))  {
+		if ($¿sort)  ksort($subdirs, $¿sort);
+		foreach ($subdirs as $subdir => &$d)  {$d = read_dir($dir.$subdir, $filters, $¿shallow, $¿sort);}
+		$filelist['/']=$subdirs;  }
+	$filelist['.']=$dir;
+	$filelist['?']=$filepaths;
 	return $filelist;  }
 
 
