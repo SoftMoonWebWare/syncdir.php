@@ -6,13 +6,14 @@ synchronize, copy, &amp; compare filesystem folders / directories
 ¡It has **NO** security implementations!
 It is designed for a private server, only to utilize PHP's file-system access.
 
-This **alpha** release has been tested in real-time use at various times in the past 2 years.
+This **alpha** release has been tested in real-time use at various times in the past 3 years.
 It it intended to:
-1. keep a backup of "project folders" (and subfolders), only copying newly created or updated files.
-2. synchronize project folders and subfolders when 2 (or more) folks are working on different files within.
-3. compare 2 folders and subfolders for similar files and directory structures,
-		as well as similar files in dis-similar directory structures.
-4. create "playlists" on USB thumb-drives.
+1. Keep a backup of "project folders" (and subfolders), only copying newly created or updated files within the same folder/directory tree structure.
+2. Synchronize project folders and subfolders when 2 (or more) folks are working on different files within, keeping the same folder/directory tree structure.
+3. Archive files from a source to a destination, with dis-similar folder/directory tree structures.
+4. Compare 2 folders and subfolders for similar files and folder/directory tree structures,
+		as well as similar files in dis-similar folder/directory tree structures.
+5. Create "playlists" on USB thumb-drives.
 
 # 1. Backup folders
 You can keep a backup of your folder in another location using this utility.
@@ -30,18 +31,28 @@ If you have several archive folders with many of the same files in each but not 
 you can use syncdir.php to make one unified archive.
 It can even find the files stuffed in different folders when your archive structures are dis-similar.
 
-# 3. Compare folders
-Either of the above two functions can be run **without** any files actually being copied;
+# 3. Archive files (¡not tested!)
+Using the “Archive Mode” you can copy files from a source to a destination, avoiding any similar files found in an “archive folder”.
+The “archive folder” may be any folder (the destination folder by default).
+The folder/directory tree structure of the “archive folder” does not matter, and does not need to match the tree structure of the source.
+However, when the files are copied, the folder/directory tree structure is maintained from the source to the destination.
+
+# 4. Compare folders
+Any of the above three functions can be run **without** any files actually being copied;
 syncdir.php will only report the files that need to be backed-up or synchronized.
 You should always run syncdir in this mode first;
 it will allow you to modify the sync-options and sync-filters until you get them the way you want them.
 
-# 4. Create USB thumb "playlists"
-Many car radios, etc., can play files on a USB thumb-drive; just plug it in.
+# 5. Create USB thumb "playlists"
+Many car radios, etc., can play media files on a USB thumb-drive; just plug it in.
 But they don't let you modify the song order; the songs are played *in the order they were copied to the folder*.
-Windows' drag & drop copy doesn't guarantee this order.
-Using syncdir.php, make sure your song filenames start with a "track-number" (use 01, 02,...10, 11, etc. if more than 9 files),
+Windows' drag & drop bulk-copy doesn't guarantee this order; you must copy and then paste each file individually by hand to guarantee the order.
+Using syncdir.php, you have a few options to control the song-order:
+- make sure your song filenames start with a "track-number" (use 01, 02,...10, 11, etc. if more than 9 files),
 then copy (backup) them to your thumb-drive with the "sort files" option checked.
+- you can (further) sort your files by hand into the order you want using the mouse to drag and drop them.
+SyncDir can automatically remove existing track numbers from the destination filenames if you don’t want them.
+SyncDir can automatically add track numbers to the destination filenames in the order you arrange them, if you want.
 
 # Options:
 - check subfolders
@@ -50,6 +61,10 @@ then copy (backup) them to your thumb-drive with the "sort files" option checked
 - look for similar files
 - preserve file creation time
 - sort files alphabetically when copying
+- comingle (or not) folders with files when sorting
+- remove existing track numbers
+- add track numbers
+- track number increment (when automatically adding track numbers)
 - move old overwritten files to a trash folder
 - various filtering options (filter in / filter out)
 * control the order and method of filter application
@@ -73,13 +88,6 @@ When syncdir.php shows you files to be / that have been synced, it will highligh
 
 When "similar files" are found, click on the ▼ down-arrow to see them, the ▲ up-arrow to hide them.
 
-When using Windows, many times the OS tells PHP the filesize in KBs, MBs, etc., i.e. a “rounded estimate” instead of an exact number of bytes.
-This can flubber the “find similar files” algorithm a bit, and it may show you completely unrealted files.
-I want to be able to identify files that have had their names changed, even having been put into a different folder tree structure,
-and filesize is the only way without opening each file and comparing the contents (¡too much overhead!).
-Close is better than nothing or being way too slow.
-¡Filesystems should put checksums in the directory and return exact filesizes!
-
 When you are using Windows, files are already presented as sorted no matter what option you choose.
 Windows passes the sorted file order to PHP, but Linux does not.
 However, if you choose to override the "case insensitive" default for Windows and choose "case sensitive",
@@ -102,10 +110,12 @@ I’ve been using it for a while mostly without problems, except:
  Just nothing gets synced/copied, as if you selected no files to sync/copy.
  I've looked at the code again and again, but did not see any reason why it might fail,
  other than the data did not transfer from the browser to PHP correctly for some reason.
+ Since then, I've been using it without any problem!  Wierd, huh!
  Playing with the filesystem while debugging is not something I want to do everyday,
- so IDK when I will look into that.
+ so IDK when I will look into that by trying to flubber it.
  I think I remember trying to sync many, many, many “verified first” files at once, and it failed.
  It worked when I only verified a few, if that’s a hint.
+ However, again, since then, I’ve bulk copied a very large sum of files, again and again as I make a new SSD backup of all my stuff from a HDD archive, as well as sync two different old achive drives and my current working drive, with no problem.
  Debugging code that fails under unknown circumstances is tricky.
  Doing so while your code is continuously modifying the filesystem is a real PITA!
 

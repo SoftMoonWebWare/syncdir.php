@@ -1,6 +1,6 @@
 <?php  //  charset='UTF-8'   EOL: 'UNIX'   tab spacing=2 ¡important!   word-wrap: no
 	/*/ SyncDir.php   written by and Copyright © Joe Golembieski, SoftMoon WebWare
-					 ALPHA 1.2.1  July 30, 2024
+					 ALPHA 1.4  September 14, 2024
 
 		This program is licensed under the SoftMoon Humane Use License ONLY to “humane entities” that qualify under the terms of said license.
 		For qualified “humane entities”, this program is free software:
@@ -39,8 +39,8 @@
  *   Adjust it as you see appropriate!
  *  • A few times the “verify first” option simply did not work.  WHY?  IDK!
  *   I didn’t have time to dig in and start logging everything PHP did, or even try again to do so.
- *   Other times it works perfectly.  When it fails, there is no error message,
- *   and the HTML interface seems normal.
+ *   Other times it works perfectly.  Lately I have been using it almost exclusively, with no problems.
+ *   When it fails, there is no error message, and the HTML interface seems normal.
  *   Just nothing gets synced/copied, as if you selected no files to sync/copy.
  *   I've looked at the code again and again, but did not see any reason why it might fail,
  *   other than the data did not transfer from the browser to PHP correctly for some reason.
@@ -48,6 +48,7 @@
  *   so IDK when I will look into that.
  *   I think I remember trying to sync many, many, many “verified first” files at once, and it failed.
  *   It worked when I only verified a few files, if that’s a hint.
+ *   (update: I’ve been large-bulk copying with it lately with no problems)
  *   Debugging code that fails under unknown circumstances is tricky.
  *   Doing so while your code is continuously modifying the filesystem is a real PITA!
  *
@@ -55,13 +56,11 @@
 */
 
 
-ini_set("max_execution_time", 0);  // = ∞     1500 =25 min     1800 =30 min
+ini_set("max_execution_time", 0);  // 0 = ∞     1500 =25 min     1800 =30 min
 clearstatcache(true);
 
 define ('TRASH_FOLDER_NAME', ".trash".DIRECTORY_SEPARATOR);  //this could be a “hidden” file as given, or have a full name.ext
 define ('TRASH_NAME_EXT', ".trash");  //should generally match the above’s extension.
-
-define ('COMINGLE', FALSE);  // ¿Show directories with files/folders co-mingled =OR= group folders together before files?
 
 define("MS_WINDOWS", stripos(php_uname('s'), 'Win')!==FALSE);
 define('POSIX_WILDCARDS_PATTERNS_SUPPORTED', (!MS_WINDOWS  or  phpversion()>="5.3.0"));
@@ -86,16 +85,9 @@ define ('REGEX', '/^(.).+\\1[igme]{0,4}$/');   //
 //define ('CHKD', "checked='checked' ");
 define ('CHKD', "checked ");
 define ('EXPANDER',
-	'<span class="expand" onclick="this.parentNode.addClass(\'expand\')">▼</span><span onclick="this.parentNode.removeClass(\'expand\')">▲</span>'	);
+	'<span class="expand" onclick="this.parentNode.classList.add(\'expand\')">▼</span><span class="collapse" onclick="this.parentNode.classList.remove(\'expand\')">▲</span>'	);
 
 if (!defined('FNM_CASEFOLD'))  define ('FNM_CASEFOLD', 16);  // for Function filter()
-
-/*
-$foo=array("foo"=>"fazz", 7, 5,"sing"=>"soft", 9, 2, 0,"fing"=>"fong", 8, 1, 4);
-$bar=array(17,45,29,72,90,"sing"=>"loud",38,81,54,"bar"=>"bazz","bing"=>"bong");
-$gek=array_multisort($foo, $bar);
-echo var_dump($foo),"<br><br>",var_dump($bar),"<br><br>";
-*/
 
 
 ?>
@@ -113,25 +105,45 @@ body {
 	background-color: black;
 	font-family: sans-serif;
 	padding-bottom: 1.618em; }
-pre {font-size: 1.2em;}
+body.dragging {
+	cursor: not-allowed; }
+body.dragging ul.drag-target {
+	cursor: copy; /* normal */
+}
+body.dragging li.drag-entry {
+	position: fixed;  /*placement controlled by JS*/
+	color: Chartreuse;
+	background-color: black; }
+body.dragging ul.drag-target li:hover {
+	border-top: 3px double white; }
+pre {
+	font-size: 1.2em;}
 h1 {
 	font-weight: bold;
 	font-size: 2em;
 	color: aqua;
 	margin-top: 0.162em;
 	padding: 0; }
+size,
 path,
 filename {
 	font-family: monospace;
 	font-weight: bold;
 	white-space: nowrap; }
+size {
+	color: white;
+	margin-right: 1em;
+	white-space: pre; }
 path.replacement {
 	border-left: 4px double red;
 	border-right: 4px double red;
 	background-color: #620000; }
 path.replaced {
 	border-right: 4px double red;
-	color: darkMageta; }
+	color: DarkMagenta; }
+path.destiny {
+	border-right: 4px double cyan;
+	color: cyan; }
 path.failed-copy {
 	color: red;
 	font-style: oblique; }
@@ -163,6 +175,7 @@ aside:hover span:first-child {
 	bottom: auto;
 	left: -1em;
 	right: auto; }
+arrow,
 .helplink,
 help span {
 	font-size: 1.618em; }
@@ -205,7 +218,8 @@ note h3 mark {
 	font-size: inherit;
 	margin-right: 1em; }
 
-ul { 	list-style: none; }
+ul {
+	list-style: none; }
 
 h5 {
 	font-weight: bold;
@@ -232,14 +246,15 @@ input[type="submit"] {
 #dirInput {
 	display: block;
 	padding: 0.2em 1em; }
+label.folder {
+	display: block; }
 #dirInput label.folder {
-	display: block;
 	text-indent: -0.618em; }
 #dirInput label.folder:last-child {
 	margin-top: .2618em; }
 #dirInput span {
 	font-size: 1.618em;  }
-#dirInput label.folder input {
+label.folder input {
 	width: calc(100% - 8.2em); }
 fieldset {
 	display: block;
@@ -248,15 +263,22 @@ fieldset {
 	margin: 0;
 	position: relative; }
 div fieldset,
+#options div,
 fieldset fieldset,
 section fieldset:first-child,
 table {
 	border: 1px solid yellow;
 	width: 100%;
 	margin: 0 0 2em 0; }
-div#options fieldset:last-child label,
+#options > fieldset:last-child label,
+#options div fieldset,
+#options div fieldset:last-child label:last-child,
 fieldset#Filter_Order label {
 	display: block; }
+#sort_opts {
+	position: relative;
+	padding-right: 1.618em;
+	padding-bottom: 0.2em; }
 
 #verifier {
 	display: block;
@@ -270,6 +292,8 @@ form#verifier {
 	margin: 0 0 1.618em 0;
 	padding: 0;
 	list-style-type: none; }
+#verifier ul.drag_target {
+	outline: 3px dotted white; }
 #verifier ul ul {
 	margin: 0 0 0 1.618em;
 	display: none; }
@@ -309,7 +333,6 @@ form#verifier {
 	color: red;
 	margin: 0 1em; }
 
-
 #options {
 	position: relative;
 	z-index: 4; }
@@ -339,20 +362,25 @@ help p,
 help div {
 	display: none; }
 help:hover {
-	right: auto;
+	left: auto;
+	right: 0px;
+	top: 1.382em;
 	bottom: auto;
+	width: 17em;
 	padding: .618em;
 	border: 1px solid orange;  }
-#options:hover {
-	z-index: 10; }
+#options:hover,
 #options help:hover {
-	top: 2.618em;
-	left: 20%;
 	z-index: 10; }
+#filterOrder help:hover {
+	right: auto;
+	left: 20%; }
+/*
 #dirInput help:hover {
 	right: 0px;
 	left: auto;
 	bottom: auto; }
+	*/
 #filters fieldset > help:hover {
 	top: 2em;
 	left: 80%; }
@@ -378,14 +406,20 @@ td fieldset.open label {
 	display: inline; }
 td fieldset legend label {
 	display: inline; }
-div fieldset,
+div > fieldset,
 section fieldset:first-child,
+#options div,
 fieldset fieldset {
 	display: inline-block;
 	width: auto;
 	padding-left: 7px;
 	vertical-align: bottom; }
+
+#options div fieldset {
+	display: block;
+	margin-bottom: 0.618em; }
 div#options fieldset,
+div#options div,
 section fieldset:first-child,
 fieldset fieldset {
 	vertical-align: top;  }
@@ -437,78 +471,68 @@ footer {
 
 const
 	is_MS_Windows=(navigator.platform.search(/Win/i)!==(-1)),
-	DIR_SEP= is_MS_Windows ? "\\" : "/";
+	DIR_SEP= is_MS_Windows ? "\\" : "/",
+	transpose=new Array(
+		"1!2@%6^7&8*=+/?[{}]|\\'\"",
+		"●¡©®°☺☻♪♫×☼≈±÷¿‘“”’¦¶πφ" );
 
 var tabbedOut=false;
 
-function enhanceKeybrd(event)  { // for American QWERTY keyboards
+
+function enhanceKeybrd(event)  { // typically for American QWERTY keyboards
 	//  characters not allowed in filenames:  \/?*":;<>|
 	if (event.altKey)  return;
-	var txt, curPos,
-			isPath=event.target.name.match( /dir|ext|file|path/ );
+	const isPath=event.target.name.match( /dir|ext|file|path/ );
 	//console.log(event.keyCode," - ",event.key);
 	if (event.keyCode===9)  {tabbedOut=true;  return;}  else  tabbedOut=false;
-	switch (event.keyCode)  {
-	case 13: event.preventDefault();  return;  // ENTER key
-	case 49: if (event.ctrlKey)  txt= event.shiftKey ? "¡" : "●";  // 1! key
-	break;
-	case 50: if (event.ctrlKey)  txt= event.shiftKey ? "®" : "©";  // 2@ key
-	break;
-	case 53: if (event.ctrlKey && event.shiftKey)  txt="°";  // 5% key
-	break;
-	case 54: if (event.ctrlKey)  txt= event.shiftKey ? "☻" : "☺";  // 6^ key
-	break;
-	case 55: if (event.ctrlKey)  txt= event.shiftKey ? "♫" : "♪";  // 7& key
-	break;
-	case 56: if (event.ctrlKey)  txt= event.shiftKey ? "☼" : "×";  // 8* key
-					 else if (event.shiftKey  &&  isPath)  {
-						if (!event.target.name.match(/file/)
-						||  event.target.selectionStart!==event.target.value.length
-						||  event.target.value.substr(-1)!==DIR_SEP)
-							event.preventDefault();
-						return;  }
-	break;
-	case 59: if (isPath  &&  (!event.shiftKey  ||  isPath[0]==='ext'  ||  isPath[0]==='file'))  {  // ;: key
-							event.preventDefault();  return;  }
-	break;
-	case 61: if (event.ctrlKey)  txt= event.shiftKey ? "≈" : "±";  // =+ key
-	break;
-	case 106: if (isPath)  {event.preventDefault();  return;}  // * key on numeric keypad
-	break;
-	case 111: if (isPath)  {  // / key on numeric keypad
-							if (isPath[0]==='ext')  {event.preventDefault();  return;}
-							if (is_MS_Windows)  txt='\\';  }
-	break;
-	case 188: if (event.shiftKey  &&  isPath)  {event.preventDefault();  return;}  // ,< key
-	break;
-	case 190: if (event.shiftKey  &&  isPath)  {event.preventDefault();  return;}  // .> key
-	break;
-	case 191:   // /? key
-		if (event.ctrlKey)  txt= event.shiftKey ? '¿' : '÷';
-		else if (isPath  &&  (event.shiftKey || isPath[0]==='ext'))  {event.preventDefault();  return;}
-		else if (isPath  &&  is_MS_Windows)  txt='\\';
-	break;
-	case 219:   // [{ key
-		if (event.ctrlKey)  txt= event.shiftKey ? '“' : '‘';
-	break;
-	case 220:   // \| key
-		if (event.ctrlKey)  txt= event.shiftKey ? '¦' : '¶';
-		else if (isPath  &&  (event.shiftKey || isPath[0]==='ext'))  {event.preventDefault();  return;}
-		else if (isPath  &&  !is_MS_Windows)  txt='/';
-	break;
-	case 221:   // ]} key
-		if (event.ctrlKey)  txt= event.shiftKey ? '”' : '’';
-	break;
-	case 222:   // '" key
-		if (event.ctrlKey)  txt= event.shiftKey ? 'φ' : 'π';
-		else if (event.shiftKey  &&  isPath)  {event.preventDefault();  return;}
-	break;  }
-	if (txt)  {
-		curPos=event.target.selectionStart;
+	if (event.keyCode===13) {event.preventDefault();  return;}  // ENTER key
+	function addText(txt)  {
+		const curPos=event.target.selectionStart;
 		event.target.value=event.target.value.substr(0,curPos)+txt+event.target.value.substr(event.target.selectionEnd||curPos);
 		event.target.selectionStart=
 		event.target.selectionEnd=curPos+txt.length;
-		event.preventDefault();  }  };
+		event.preventDefault();  }
+	var p;
+	if (event.ctrlKey  &&  (p=transpose[0].indexOf(event.key)) >= 0)  {
+		addText(transpose[1][p]);
+		return;  }
+	switch (event.key)  {
+  case '*':
+		if (isPath
+		&& (!event.target.name.match(/file/)
+			||  event.target.selectionStart!==event.target.value.length
+			||  event.target.value.substr(-1)!==DIR_SEP))
+				event.preventDefault();
+		return;
+
+	case ':':
+		if (isPath  &&  (isPath[0]==='ext'  ||  isPath[0]==='file'))
+							event.preventDefault();
+		return;
+
+	case "/":
+		if (isPath)  {
+			if (isPath[0]==='ext')  event.preventDefault();
+			else if (is_MS_Windows)  addText('\\');  }
+		return;
+
+	case "\\":
+		if (isPath)  {
+			if (isPath[0]==='ext')  event.preventDefault();
+			else if (!is_MS_Windows)  addText('/');  }
+		return;
+
+	case "<":
+	case ">":
+		event.preventDefault();
+		return;
+
+	case ";": if (is_MS_Windows)  return;
+	case "?":
+	case '"':
+	case "|":
+		if (isPath)  event.preventDefault();
+		return;  };  }
 
 
 function popNewField(fileField)  {
@@ -523,47 +547,6 @@ function popNewField(fileField)  {
 	if (tabbedOut)	setTimeout(function () {allInps[allInps.length-1].focus();}, 1);
 	return false;  }  }
 
-// ================ from UniDOM =========================
-
-	function addClass(c)  {this.className=aClass(this.className, c);}
-	function aClass(cn, ac)  {  //private
-		if (!(ac instanceof Array))  ac=[ac];
-		for (var i=0; i<ac.length; i++)  {
-			if (!(typeof cn == 'string'  &&  cn.match( new RegExp('\\b'+RegExp.escape(ac[i])+'\\b') )))
-				cn+=(cn) ? (" "+ac[i]) : ac[i];  }
-		cn=cleanClass(cn);
-		return cn;  }
-
-	function removeClass(c) {this.className=xClass(this.className, c);}
-	function xClass(cn, xc) {  //private
-		if (typeof cn != 'string')  return;
-		if (!(xc instanceof Array))  xc=[xc];
-		for (var i=0; i<xc.length; i++)  {
-			cn=cn.replace((typeof xc[i] == 'object'  &&  (xc[i] instanceof RegExp)) ?  xc[i]  :  new RegExp('\\b'+RegExp.escape(xc[i])+'\\b', 'g'),  "");
-			cn=cleanClass(cn);  }
-		return cn;  }
-
-	//private
-	function cleanClass(cn)  {
-		cn=cn.replace( /^\s*/ , "");
-		cn=cn.replace( /\s*$/ , "");
-		cn=cn.replace( /\s{2,}/g , " ");
-		return cn;  }
-
-	function useClass(c, b)  {  // c should be the string name of the class
-		if (b)  this.className=aClass(this.className, c);
-		else  this.className=xClass(this.className, c);  }
-
-	function toggleClass(c)  {  // c should be the string name of the class
-		if (this.className.match(c))
-					this.className=xClass(this.className, c);
-		else  this.className=aClass(this.className, c);  }
-
-
-Element.prototype.addClass=addClass;
-Element.prototype.removeClass=removeClass;
-Element.prototype.useClass=useClass;
-Element.prototype.toggleClass=toggleClass;
 
 RegExp.escape=function (string) {
 	// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions
@@ -571,6 +554,10 @@ RegExp.escape=function (string) {
 }
 
 // ===================================================
+
+function sync_verified_form(event)  {
+	const inp=document.querySelector('input[type="hidden"][name="'+event.target.name+'"]');
+	if (inp)  inp.value=event.target.value;  }
 
 // this is called when a directory name is (un)checked in the “verify” file-tree
 function check_all_in_dir(e)  {
@@ -585,8 +572,6 @@ function check_dir(ul, chkd)  {
 	event.stopPropagation();
 	try {
 		if (chkd===false)  throw false;
-//		var inps=ul.getElementsByTagName('input');
-//		for (var i=0; i<inps.length; i++)  {
 		for (const inp of ul.getElementsByTagName('input'))  {
 			if (inp.name=="")  continue;
 			if (!inp.checked)  throw false;  }
@@ -594,6 +579,52 @@ function check_dir(ul, chkd)  {
 	catch (b) {
 		ul.parentNode.querySelector('input').checked=b;
 		if (ul=ul.parentNode.closest('ul'))  check_dir(ul, b);  }  }
+
+function drag_entry(event)  {
+	if (event.target.nodeName==='INPUT'
+	||  event.target.closest('span.expand')
+	||  event.target.closest('span.collapse'))  return;
+	const
+		ul=event.currentTarget,
+		li=event.target.closest("li"),
+		body=document.body;
+	event.preventDefault();
+	event.stopPropagation();
+	if (!li)  return;
+	body.classList.add('dragging');
+	ul.classList.add('drag-target');
+	li.classList.add('drag-entry');
+	body.addEventListener('mousemove', catsEye);
+	body.addEventListener('mouseup', drop);
+	catsEye(event);
+	function catsEye(event)  {  // onMouseMove
+		if (!event.buttons)  {drop(null);  return;}
+		li.style.top=event.clientY+"px";
+		li.style.left=(event.clientX+10)+"px"; }
+	function drop(event)  {  // onMouseUp
+		body.removeEventListener('mousemove', catsEye);
+		body.removeEventListener('mouseup', drop);
+		body.classList.remove('dragging');
+		ul.classList.remove('drag-target');
+		li.classList.remove('drag-entry');
+		const next_li=event.target.closest('li');
+		if (event===null
+		||  next_li===null
+		||  event.target.closest('ul')!==ul)  return;
+		ul.insertBefore(li, next_li);  }  }
+
+
+function set_archive_mode(event)  {
+	if (event.target.closest('fieldset').id==="achive_mode"
+	&&  event.target.type==='radio')  {
+		const
+			mode=document.querySelector('input[name="archive_mode"]:checked').value,
+			others=document.querySelector('input[archiverInfluence]');
+		for (const inp of others)  {
+			inp.checked= (inp.getAttribute('archiverInfluence')===mode);  }  }
+	else if (event.target.getAttribute('archiverInfluence')==='off')
+		document.querySelector('input[name="archive_mode"][value="off"]').checked=true;  }
+
 
 // this is called when a group of filename extensions is (un)checked
 function check_all_in_group(e)  {
@@ -613,12 +644,10 @@ function check_legend(fs)  {
 // the “all folders” option is not available (not logical) when the sync is not recursive
 function disable_AllFolders(flag)  {
 	const lbl=document.getElementById('AllFolders');
-	lbl.useClass('disabled', flag);
+	lbl.classList.toggle('disabled', flag);
 	lbl.firstChild.disabled=flag;  }
 
 function align_filterTables()  {
-//	for (var i=0, fo_fs=document.getElementById('Filter_Order').elements; i<fo_fs.length; i++)  {
-//		if (fo_fs[i].checked)  {var fo=fo_fs[i].value;  break;}  }
 	for (const inp of document.getElementById('Filter_Order').elements)  {
 		if (inp.checked)  {var fo=inp.value;  break;}  }
 	const
@@ -626,37 +655,42 @@ function align_filterTables()  {
 		fot=document.getElementById('FilterOut');
 	switch (fo)  {
 		case 'none':
-			fit.disabled=true;  fit.addClass('disabled');
-			fot.disabled=true;  fot.addClass('disabled');
+			fit.disabled=true;  fit.classList.add('disabled');
+			fot.disabled=true;  fot.classList.add('disabled');
 		break;
 		case 'in':
-			fit.disabled=false;  fit.removeClass('disabled');
-			fot.disabled=true;  fot.addClass('disabled');
+			fit.disabled=false;  fit.classList.remove('disabled');
+			fot.disabled=true;   fot.classList.add('disabled');
 			fot.parentNode.insertBefore(fit, fot);
 		break;
 		case 'out':
-			fot.disabled=false;  fot.removeClass('disabled');
-			fit.disabled=true;  fit.addClass('disabled');
+			fot.disabled=false;  fot.classList.remove('disabled');
+			fit.disabled=true;   fit.classList.add('disabled');
 			fit.parentNode.insertBefore(fot, fit);
 		break;
 		case 'in or out':
-			fit.disabled=false;  fit.removeClass('disabled');
-			fot.disabled=false;  fot.removeClass('disabled');
+			fit.disabled=false;  fit.classList.remove('disabled');
+			fot.disabled=false;  fot.classList.remove('disabled');
 			fot.parentNode.insertBefore(fit, fot);
 		break;
 		case 'in,out':
-			fit.disabled=false;  fit.removeClass('disabled');
-			fot.disabled=false;  fot.removeClass('disabled');
+			fit.disabled=false;  fit.classList.remove('disabled');
+			fot.disabled=false;  fot.classList.remove('disabled');
 			fot.parentNode.insertBefore(fit, fot);
 		break;
 		case 'out,in':
-			fit.disabled=false;  fit.removeClass('disabled');
-			fot.disabled=false;  fot.removeClass('disabled');
+			fit.disabled=false;  fit.classList.remove('disabled');
+			fot.disabled=false;  fot.classList.remove('disabled');
 			fit.parentNode.insertBefore(fot, fit);
 		break;
-	}
+	}  }
 
-}
+function keep_help_visible(event)  {
+	const pos=event.target.getBoundingClientRect();
+	if (pos.left<0)  event.target.style.right=pos.left+"px";
+	if (!event.target.regulated)  {
+		event.target.addEventListener('mouseleave', event=>event.target.style.right="");
+		event.target.regulated=true;  }  }
 </script>
 </head>
 <body>
@@ -737,7 +771,10 @@ try {
 	$dir1=read_dir($_POST['dir_1'], $filters, $_POST['recursive']==='no', $_POST['sort']==='yes');
 	$dir2=read_dir($_POST['dir_2'], $filters, $_POST['recursive']==='no', $_POST['sort']==='yes');
 //	echo "<pre>",var_dump($dir1, $dir2),"</pre>";
-//echo "we got to here also"; exit;
+
+	if ($_POST['archive_mode']==='on')
+		$archiveDir= read_archive($_POST['archive_folder'] or $_POST['dir_1'], $filters);
+	else  $archiveDir=null;
 
 	switch ($_POST['submit'])  {
 	case "report only": $h1="Suggested Files to Sync from";
@@ -750,31 +787,53 @@ try {
 		echo "<form id='verifier' action='syncdir.php' method='post'>\n",
 					'<input type="hidden" name="verified[dir1]" value="',htmlentities($_POST['dir_1']),"\">\n",
 					'<input type="hidden" name="verified[dir2]" value="',htmlentities($_POST['dir_2']),"\">\n",
-					"<input type='hidden' name='verified[syncMethod]' value='{$_POST['sync_method']}'>\n";
+					"<input type='hidden' name='verified[syncMethod]' value='{$_POST['sync_method']}'>\n",
+					"<input type='hidden' name='preserveCreationTime' value='{$_POST['preserveCreationTime']}'>\n",
+					"<input type='hidden' name='removeTrackNums' value='{$_POST['removeTrackNums']}'>\n",
+					"<input type='hidden' name='addTrackNums' value='{$_POST['addTrackNums']}'>\n",
+					"<input type='hidden' name='trackNumInc' value='{$_POST['trackNumInc']}'>\n",
+					"<input type='hidden' name='comingle' value='{$_POST['comingle']}'>\n",
+					"<input type='hidden' name='trash' value='{$_POST['trash']}'>\n",
+					"<input type='hidden' name='show_sizes' value='{$_POST['show_sizes']}'>\n";
 	break;
 	default: throw new bad_form_data("internal error: Bad Submit Method");  }
 
 	$filecount=0;
+	$trackNumInc=  (max(1, min(100, round(floatval($_POST['trackNumInc'])))));
 	switch ($_POST['sync_method'])  {
 	case "bi-directional":
 		echo "<h1>$h1 <path>",htmlentities($_POST['dir_1']),"</path> to <path>",htmlentities($_POST['dir_2']),"</path></h1>\n";
-		$uniq=find_unique($dir1, $dir2, $_POST['check_ages']==='no');
+		$uniq=find_unique($dir1, $dir2, $archiveDir, $_POST['check_ages']==='no');
 		$filecount+=count($uniq['paths']);
 		if ($_POST['find_similar']==='yes')  find_misplaced($uniq, $dir2);
 		if ($_POST['submit']==="sync ’em")
-			$uniq['replaced']=syncdir($_POST['dir_1'], $_POST['dir_2'], $uniq['paths'], $_POST['preserveCreationTime']==='yes');
+			syncdir($_POST['dir_1'], $_POST['dir_2'], $uniq,
+							$_POST['preserveCreationTime']==='yes',
+							$_POST['removeTrackNums']==='yes',
+							$_POST['addTrackNums']==='yes',
+							$trackNumInc);
 		$tree=build_dir_tree($_POST['dir_1'], $uniq['paths']);
-		show_dir($tree, $uniq, $_POST['submit']==='verify first' ? 'in_dir1' : FALSE,  COMINGLE);
+		show_dir($tree, $uniq,
+						 $_POST['submit']==='verify first' ? 'in_dir1' : FALSE,
+						 $_POST['show_sizes']==='yes',
+						 $_POST['comingle']==='yes');
 		//echo "<pre>",var_dump($tree, $uniq),"</pre>";
 	case "uni-directional":
 		echo "<h1>$h1 <path>",htmlentities($_POST['dir_2']),"</path> to <path>",htmlentities($_POST['dir_1']),"</path></h1>\n";
-		$uniq=find_unique($dir2, $dir1, $_POST['check_ages']==='no');
+		$uniq=find_unique($dir2, $dir1, $archiveDir, $_POST['check_ages']==='no');
 		$filecount+=count($uniq['paths']);
 		if ($_POST['find_similar']==='yes')  find_misplaced($uniq, $dir1);
 		if ($_POST['submit']==="sync ’em")
-			$uniq['replaced']=syncdir($_POST['dir_2'], $_POST['dir_1'], $uniq['paths'], $_POST['preserveCreationTime']==='yes');
+			syncdir($_POST['dir_2'], $_POST['dir_1'], $uniq,
+							$_POST['preserveCreationTime']==='yes',
+							$_POST['removeTrackNums']==='yes',
+							$_POST['addTrackNums']==='yes',
+							$trackNumInc);
 		$tree=build_dir_tree($_POST['dir_2'], $uniq['paths']);
-		show_dir($tree, $uniq, $_POST['submit']==='verify first' ? 'in_dir2' : FALSE,  COMINGLE);
+		show_dir($tree, $uniq,
+						 $_POST['submit']==='verify first' ? 'in_dir2' : FALSE,
+						 $_POST['show_sizes']==='yes',
+						 $_POST['comingle']==='yes');
 		//echo "<pre>",var_dump($tree, $uniq),"</pre>";
 	break;
 	default: throw new bad_form_data("internal error: Bad Sync Method");  }
@@ -805,14 +864,28 @@ catch (bad_form_data $e)  {$errorHTML="<h5>".$e->getMessage()."</h5>\n";}
 	<fieldset id='dirInput'>
 	<label class='folder'>folder1 path <input type='text' name='dir_1' value='<?php echo htmlentities($_POST['dir_1']);?>'></label>
 	Synchronize files:&nbsp;
-	<label title="bi-directional">between both folders<span>↕</span><input type='radio' name='sync_method' value="bi-directional" <?php
+	<label title="bi-directional">between both <arrow>&#x21F3;</arrow> folders<arrow>&#x21D5;</arrow><input type='radio' name='sync_method' value="bi-directional" archiverInfluence='off' <?php
 		if ($_POST['sync_method']=="bi-directional")  echo CHKD; ?>></label>
-	<label title="uni-directional"><input type='radio' name='sync_method' value="uni-directional" <?php
-		if ($_POST['sync_method']!="bi-directional")  echo CHKD; ?>><span>↑</span>from folder2 to folder1</label>
+	<label title="uni-directional"><input type='radio' name='sync_method' value="uni-directional" archiverInfluence='on' <?php
+		if ($_POST['sync_method']!="bi-directional")  echo CHKD; ?>><arrow>&#x21D1;</arrow>from folder2 to <arrow>&#x21E7;</arrow> folder1</label>
 	<label class='folder'>folder2 path <input type='text' name='dir_2' value='<?php echo htmlentities($_POST['dir_2']);?>'></label>
 	<help><span>☻</span><p>It is best to define paths from the root <?PHP echo MS_WINDOWS ? "drive (or user," : "user (or drive,"; ?>
 	depending on <abbr title='Operating System'>OS</abbr>)
 	and not to rely on <abbr>PHP</abbr> relative or “include” paths.</p></help>
+	</fieldset>
+	<fieldset id='archiveMode'><legend>Archive Mode</legend>
+	<p>Archive mode is only uni-directional.&nbsp;
+	It ignores files in the source directory/folder (and optionally its subfolders)
+	that are found <em>anywhere</em> in the archive directory/folder (and optionally its subfolders).&nbsp;
+	The archive folder may be any directory/folder;
+	if you leave it blank, the destination folder (folder1) becomes the archive folder by default.&nbsp;
+	As usual, files in the source folder that are found in the destination folder
+	with a matching file-path may also be ignored depending on other options’ settings.</p>
+	<label><input type='radio' name='archive_mode' value='on' <?php
+		if ($_POST['archive_mode']=="on")  echo CHKD; ?>>on</label>
+	<label><input type='radio' name='archive_mode' value='off' <?php
+		if ($_POST['archive_mode']!="on")  echo CHKD; ?>>off</label>
+	<label class='folder'>archive folder path <input type='text' name='archive_folder' value='<?php echo htmlentities($_POST['archive_folder']);?>'</label>
 	</fieldset>
 	<fieldset id="recursive" onchange="disable_AllFolders(event.target.value==='no');">
 	<legend>Include sub-directories recursively?</legend>
@@ -837,24 +910,58 @@ catch (bad_form_data $e)  {$errorHTML="<h5>".$e->getMessage()."</h5>\n";}
 	echo php_uname('s'), (stripos(php_uname('s'), "win")===FALSE) ? " =Yes" :" =No" ; ?></label>
 	</fieldset>
 	<fieldset><legend>Look for similar files when unmatched?</legend>
-	<label><input type='radio' name='find_similar' value='yes' <?php
+	<label><input type='radio' name='find_similar' value='yes' archiverInfluence='on' <?php
 		if ($_POST['find_similar']!="no")  echo CHKD; ?>>Yes</label>
-	<label><input type='radio' name='find_similar' value='no' <?php
+	<label><input type='radio' name='find_similar' value='no' archiverInfluence='off' <?php
 		if ($_POST['find_similar']=="no")  echo CHKD; ?>>No</label>
 	</fieldset>
-	<fieldset><legend>Preserve original file “last-modified” time for copied file?</legend>
+	<fieldset onchange='sync_verified_form(event)'><legend>Show file sizes?</legend>
+	<label><input type='radio' name='show_sizes' value='yes' <?php
+		if ($_POST['show_sizes']!=="no")  echo CHKD; ?>>Yes</label>
+	<label><input type='radio' name='show_sizes' value='no' <?php
+		if ($_POST['show_sizes']=="no")  echo CHKD; ?>>No</label>
+	</fieldset>
+	<fieldset onchange='sync_verified_form(event)'><legend>Preserve original file “last-modified” time for copied file?</legend>
 	<label><input type='radio' name='preserveCreationTime' value='yes' <?php
 		if ($_POST['preserveCreationTime']!="no")  echo CHKD; ?>>Yes</label>
 	<label><input type='radio' name='preserveCreationTime' value='no' <?php
 		if ($_POST['preserveCreationTime']=="no")  echo CHKD; ?>>No</label>
 	</fieldset>
-	<fieldset><legend>Sort the copied files?</legend>
-	<label><input type='radio' name='sort' value='yes' <?php
-		if ($_POST['sort']!="no")  echo CHKD; ?>>Yes</label>
-	<label><input type='radio' name='sort' value='no' <?php
-		if ($_POST['sort']=="no")  echo CHKD; ?>>No</label>
-	</fieldset>
-	<fieldset><legend>Use trash folder for overwritten files?</legend>
+	<div id='sort_opts'>
+		<fieldset><legend>Sort the copied files?</legend>
+		<label><input type='radio' name='sort' value='yes' <?php
+			if ($_POST['sort']!="no")  echo CHKD; ?>>Yes</label>
+		<label><input type='radio' name='sort' value='no' <?php
+			if ($_POST['sort']=="no")  echo CHKD; ?>>No</label>
+		</fieldset>
+		<label><input type='checkbox' name='comingle' value='yes' onchange='sync_verified_form(event)'<?php
+			if ($_POST['comingle']=="yes")  echo CHKD; ?>>Comingle folders with files?</label>
+		<help onmouseenter='keep_help_visible(event)'><span>☻</span><p>This feature is for car radios and such
+		that play songs in the order they were physically copied to a <abbr>USB</abbr> thumb-drive.&nbsp;
+		If you choose to “verify first” before copying,
+		you may further hand-sort the order files are <strong><em>physically copied</em></strong>
+		to the destination drive using the mouse to drag-&amp;-drop them.&nbsp;
+		You may <em>not</em> move them to another folder, only reorder them within their respective folders.&nbsp;
+		For Windows® systems, this will not affect the order that files are displayed to the user;
+		however it may for Linux users.</p></help>
+	</div>
+	<div>
+		<fieldset onchange='sync_verified_form(event)'><legend>Remove existing track numbers?</legend>
+		<label><input type='radio' name='removeTrackNums' value='yes' <?php
+			if ($_POST['removeTrackNums']=="yes")  echo CHKD; ?>>Yes</label>
+		<label><input type='radio' name='removeTrackNums' value='no' <?php
+			if ($_POST['removeTrackNums']!="yes")  echo CHKD; ?>>No</label>
+		</fieldset>
+		<fieldset onchange='sync_verified_form(event)'><legend>Add track numbers?</legend>
+		<label><input type='radio' name='addTrackNums' value='yes' <?php
+			if ($_POST['addTrackNums']=="yes")  echo CHKD; ?>>Yes: </label>
+		<label>increment: <input type='number' name='trackNumInc' min='1' max='100' step='1' size='7' value='<?php
+			echo  is_numeric($_POST['trackNumInc']) ? $_POST['trackNumInc'] : "1"; ?>'></label>
+		<label><input type='radio' name='addTrackNums' value='no' <?php
+			if ($_POST['addTrackNums']!="yes")  echo CHKD; ?>>No</label>
+		</fieldset>
+	</div>
+	<fieldset onchange='sync_verified_form(event)'><legend>Use trash folder for overwritten files?</legend>
 	<label><input type='radio' name='trash' value='auto' <?php
 		if ($_POST['trash']!="yes" and $_POST['trash']!="no")  echo CHKD; ?>>local where available</label>
 	<label><input type='radio' name='trash' value='yes' <?php
@@ -1052,7 +1159,7 @@ Function show_file_exts($group, $extentions)  {
 	if (is_array($default_checked)):
 		?>
 	<li><fieldset onchange='check_legend(this);'>
-	<legend onclick='this.parentNode.toggleClass("open");'
+	<legend onclick='this.parentNode.classList.toggle("open");'
 				 ><span>▼</span><span class='open'>▲</span><label><input
 					type='checkbox' onchange='check_all_in_group(this);' <?php
 					if (isset($_POST['submit']))  {
@@ -1238,7 +1345,7 @@ do { if ($¿isA  and  ($ext=array_shift($_POST['filter_out']['exts']))!=="")  { 
 	<label><input type='checkbox' name='filter_out[files][]' value='desktop.ini' <?php if (!$¿isA  or  in_array('desktop.ini', $_POST['filter_out']['files']))  echo "checked";?>><filename>desktop.ini</filename></label>
 	<label><input type='checkbox' name='filter_out[files][]' value='trash<?php echo DIRECTORY_SEPARATOR; ?>' <?php if (!$¿isA  or  in_array('trash'.DIRECTORY_SEPARATOR, $_POST['filter_out']['files']))  echo "checked";?>><filename>trash<?php echo DIRECTORY_SEPARATOR; ?></filename></label>
 <?php if ($¿isA)
-		$_POST['filter_out']['files']=array_diff($_POST['filter_out']['files'], array("Thumbs.db", "desktop.ini"));
+		$_POST['filter_out']['files']=array_diff($_POST['filter_out']['files'], array("Thumbs.db", "desktop.ini", "trash".DIRECTORY_SEPARATOR));
 do { ?>
 <input type='text' name='filter_out[files][]' value="<?php if ($¿isA)  echo array_shift($_POST['filter_out']['files']); ?>"
 	onblur='popNewField(this)' onfocus='tabbedOut=false' title='enter a File or Folder name'>
@@ -1270,18 +1377,23 @@ do { ?>
 </form>
 <footer>by SoftMoon WebWare © 2021, 2024</footer>
 <script type='text/javascript'>
-for (const inp of document.getElementById('recursive').elements) {
-	if (inp.checked)  {disable_AllFolders(inp.value==='no');  break;}  }
+if (document.getElementById('recursive').elements[1].checked)  disable_AllFolders(true);
 
-for (const inp of document.getElementsByTagName('input'))  {
-	if (inp.type==='radio')  inp.parentNode.useClass('checked', inp.checked);  }
+for (const inp of document.querySelectorAll('input[type="radio"]'))  {
+	inp.parentNode.classList.toggle('checked', inp.checked);  }
+
+const comingleInp= document.querySelector('input[name="comingle"]');
+comingleInp.parentNode.classList.toggle('checked', comingleInp.checked);
 
 align_filterTables();
 
 document.body.addEventListener('change', function(event) {
+	if (event.target===comingleInp)  {
+		comingleInp.parentNode.classList.toggle('checked', comingleInp.checked);
+		return;  }
 	if (event.target.type!=='radio')  return;
 	for (const inp of event.target.closest('fieldset').elements)  {
-		inp.parentNode.useClass('checked', inp.checked);  }  });
+		inp.parentNode.classList.toggle('checked', inp.checked);  }  });
 </script>
 </body>
 </html>
@@ -1306,11 +1418,29 @@ Function str_unquote_deep($value)  {
 	$value=(is_array($value)) ?  array_map('str_unquote_deep', $value)  :  str_replace("''", "'", $value);
 	return $value;  }
 
+Function array_keys_deep(&$A)  {
+	$keys=array();
+	array_walk_recursive($A, function($v, $k) use (&$keys)  {array_push($keys, $k);});
+	return $keys;  }
+
+Function build_mdarray(&$a, $keys, $v)  {
+	$k=array_shift($keys);
+	if (count($keys)===0)  {
+		if (isset($a[$k]))  {
+			if (is_array($a[$k]))  $a[$k][]=$v;
+			else  $a[$k]=array($a[$k], $v);  }
+		else  $a[$k]=$v;
+		return true;  }
+	if (isset($a[$k]))  {
+		if (!is_array($a[$k]))  return false;  }
+	else  $a[$k]=array();
+	return build_mdarray($a[$k], $keys, $v);  }
+
 Function check_array(&$a, $pattern=FALSE, $err_msg="")  { if ($a==NULL)  return array();
 	if (!is_array($a))  throw new bad_form_data("internal error: Bad Filter Info Structure");
 	$a=array_filter($a, "strlen");
 //	if ($pattern  and  count(preg_grep($pattern, $a, PREG_GREP_INVERT))>0)  throw new bad_form_data($err_msg);
-	if ($pattern  /* fuck the PHP developers for PHP8 */
+	if ($pattern
 	and	$temp=preg_grep($pattern, $a, PREG_GREP_INVERT)
 	and is_array($temp)
 	and count($temp)>0)  throw new bad_form_data($err_msg);
@@ -1344,20 +1474,36 @@ Function read_dir($dir, &$filters, $¿shallow=false, $¿sort=true)  {
 	$filelist['?']=$filepaths;
 	return $filelist;  }
 
+Function read_archive($dir, &$filters, &$filelist=array(), &$filepaths=array())  {
+	if (substr($dir, -1, 1)!==DIRECTORY_SEPARATOR)  $dir.=DIRECTORY_SEPARATOR;
+	$d = dir($dir);
+	while (false !== ($entry = $d->read()))  {
+		if ($entry==='.'  or  $entry==='..'  or  $entry===""
+		or  filter_file($entry, null, $filters, $srch_val))  continue;
+		if (is_dir($dir.$entry))              // ↑ value is returned
+			read_archive($dir.$entry, $filters, $filelist, $filepaths);
+		else {
+			$filelist[] = $entry;
+			$filepaths[] = $srch_val;  }  }
+	$d->close();
+	return array('?'=>$filelist, '??'=>$filepaths);  }
 
-// find directory entries that are in $dir1 that are not in $dir2
+// find directory entries that are in $dir1 that are not in $dir2 on the same path
 // (make sure they are the same file - length -)
 // or possibly if the age of a file in $dir1 is - younger - than the same file in $dir2
-Function find_unique(&$dir1, &$dir2, $¿ignore_age=true, $subpath=DIRECTORY_SEPARATOR)  {
+Function find_unique(&$dir1, &$dir2, $archiveDir=null, $¿ignore_age=true, $subpath=DIRECTORY_SEPARATOR)  {
 	// NOTE: filesize() is accurate up to 2GB on 32bit systems, 4GB on 64bit systems; but still works for comparisons up to 4GB.
 	$unique=array('names'=>array(), '?'=>array(), 'sizes'=>array(), 'paths'=>array());
 	if (is_array($dir1['?']))  foreach ($dir1['?'] as $k => $filename)  {
 		$path1=$dir1['.'].$dir1[$k];
-		if ( is_array($dir2['?'])
-		and  is_numeric($k2=array_search($filename, $dir2['?']))  /* could be false or null or 0 */
-		and  filesize($path1)===filesize($path2 = $dir2['.'].$dir2[$k2])
-		and  ($¿ignore_age
-					or  filemtime($path1)<=filemtime($path2)) )
+		if ( ( is_array($dir2['?'])
+			and  is_numeric($k2=array_search($filename, $dir2['?']))  /* could be false or null or 0 */
+			and  filesize($path1)===filesize($path2 = $dir2['.'].$dir2[$k2])
+			and  ($¿ignore_age
+						or  filemtime($path1)<=filemtime($path2)) )
+		or  (  is_array($archiveDir)
+			and  is_numeric($k3=array_search($filename, $archiveDir['?']))  /* could be false or null or 0 */
+			and  filesize($path1)===filesize($archiveDir['??'][$k3]) ))
 			continue;
 		$unique['names'][]=$dir1[$k];
 		$unique['?'][]=$filename;
@@ -1365,12 +1511,10 @@ Function find_unique(&$dir1, &$dir2, $¿ignore_age=true, $subpath=DIRECTORY_SEPA
 		$unique['paths'][]=$path1;
 		$unique['subpaths'][]=$subpath;
 		$unique['replaced'][]= is_numeric($k2);  }
-	if (isset($dir1['/']))  {
-		$dir2subs= (isset($dir2['/']) ? $dir2['/'] : array());
-		foreach ($dir1['/'] as $dirname => $subdir1)  {
-			$subdir2=isset($dir2subs[$dirname]) ? $dir2subs[$dirname] : array();
-			$unique=array_merge_recursive( $unique,
-				find_unique($subdir1, $subdir2, $¿ignore_age, $subpath.$dirname.DIRECTORY_SEPARATOR) );  }  }
+	if (isset($dir1['/']))  foreach ($dir1['/'] as $dirname => $subdir1)  {
+		$subdir2= isset($dir2['/']) ? (isset($dir2['/'][$dirname]) ? $dir2['/'][$dirname] : array()) : array();
+		$unique=array_merge_recursive( $unique,
+				find_unique($subdir1, $subdir2, $archiveDir, $¿ignore_age, $subpath.$dirname.DIRECTORY_SEPARATOR) );  }
 	return $unique;  }
 
 Function find_misplaced(&$unique, &$dir, $subpath=DIRECTORY_SEPARATOR)  {
@@ -1408,18 +1552,18 @@ Function filter_file($filename, $path, &$filters, &$srch_val)  {
 
 Function filter($filename, $path, &$filter, $logic_bool)  {
 	//return TRUE if file is to be - ignored - EXCEPT “filter in or out” returns true if the file is filtered -in-
-	if ((($isdir=is_dir($path))  and  $filter['pass_all_folders'])
+	if (($path  and  ($isdir=is_dir($path))  and  $filter['pass_all_folders'])
 	or  in_array($filename, $filter['files'])
-	or  in_array($path, $filter['paths'])
+	or  ($path  and  in_array($path, $filter['paths']))
 	or  in_array($name= ($isdir ? $filename.DIRECTORY_SEPARATOR : DIRECTORY_SEPARATOR.$filename), $filter['files']))
 		return $logic_bool;
-	if ($isdir)  foreach ($filter['super-folders'] as $folder)  {
+	if ($path  and  $isdir)  foreach ($filter['super-folders'] as $folder)  {
 		if (str_contains($path, $folder))  return $logic_bool;  }
 	foreach ($filter['exts'] as $ext)  {
 		if ($ext===substr($filename, -strlen($ext)))  return $logic_bool;  }
 	foreach ($filter['regex'] as $pcre)  {
 		if (@preg_match($pcre, $name)
-		or  @preg_match($pcre, $path))  return $logic_bool;  }
+		or  ($path  and  @preg_match($pcre, $path)))  return $logic_bool;  }
 	foreach ($filter['POSIX_wildcards'] as $wc)  {
 		if (@fnmatch($wc, $name, $_POST['CaseInsense'])
 		or  @fnmatch($wc, $path, $_POST['CaseInsense']))  return $logic_bool;  }
@@ -1436,28 +1580,37 @@ Function build_dir_tree($base, &$filepaths)  {
 		build_mdarray($tree, $path, $k);  }
 	return $tree;  }
 
-Function show_dir(&$tree, &$files, $verify, $comingle=false, $tabs="")  {
+Function show_dir(&$tree, &$files, $verify, $show_size, $comingle=false, $expander=EXPANDER, $tabs="", $size=0)  {
 	if (count($tree)==0)  {echo "<h2>—none—</h2>\n";  return;}
 	$html="";  ksort($tree, SORT_STRING);
-	echo $tabs,"<ul onchange='check_dir(this)'>\n";
+	echo $tabs,"<ul";
+	if ($verify)  echo " onchange='check_dir(this)' onmousedown='drag_entry(event)'";
+	echo ">\n";
 	foreach ($tree as $path => $k)  {
 		if (is_array($k))  {  // $path is a sub-directory in this case
-			echo $tabs, '<li class="expand">',EXPANDER;
+			ob_start();
+			$dirSize=show_dir($k, $files, $verify, $show_size, $comingle, $expander, $tabs."\t");
+			$size+=$dirSize;
+			$dirHTML=ob_get_clean();
+			echo $tabs, '<li class="expand">',$expander;
 			if ($verify)  echo '<label><input type="checkbox" onchange="check_all_in_dir(this)">';
+			if ($show_size)  echo '<size>', sprintf('%10d', $dirSize), '</size>';
 			echo '<path>', htmlentities($path),DIRECTORY_SEPARATOR, '</path>';
 			if ($verify)  echo '</label>';
-			echo "\n";
-			show_dir($k, $files, $verify, $comingle, $tabs."\t");
-			echo $tabs,"</li>\n";
+			echo "\n", $dirHTML, $tabs,"</li>\n";
 			continue;  }
 		$html.= $tabs . '<li>';
 		if ($verify)  $html.= '<label><input type="checkbox" name="verified[' . $verify . '][]" value="' . htmlentities($files['paths'][$k]) . '">';
+		if ($show_size)  $html.='<size>'.sprintf('%10d', $files['sizes'][$k]).'</size>';
+		$size+=$files['sizes'][$k];
 		$class="";
-		if ($files['replaced'][$k])  $class.='replacement ';
+		if ($files['replaced'][$k]  AND  !is_string($files['destinations'][$k]))  $class.='replacement ';
 		if (substr($path, 0,1)===chr(24))  $class.='failed-copy';
 		if ($class)  $class=' class="'.$class.'"';
 		$html.= '<path' . $class . '>' . htmlentities($path) . '</path>';  // $files['names'][$k]
 		if ($verify)  $html.= '</label>';
+		if (is_string($files['destinations'][$k]))
+			$html.= "\n".$tabs.'<div class="destiny"><path class="destiny'. ($files['replaced'][$k] ? ' replacement' : "") .'">' . htmlentities($files['destinations'][$k]) . '</path></div>';
 		if (is_string($files['replaced'][$k]))
 			$html.= "\n".$tabs.'<div class="replaced"><mark>&rArr;</mark><path'.(substr($files['replaced'][$k], 0,1)===chr(24) ? ' class="failed-copy"' : "").'>' . htmlentities($files['replaced'][$k]) . '</path></div>';
 		if (isset($files['similars'])  and  $files['similars'][$k])  {
@@ -1467,46 +1620,52 @@ Function show_dir(&$tree, &$files, $verify, $comingle=false, $tabs="")  {
 		$html.= "</li>\n";
 		if ($comingle)  {echo $html;  $html="";}  }
 	if (!$comingle)  echo $html;
-	echo $tabs,"</ul>\n";  }
+	echo $tabs,"</ul>\n";
+	return $size;  }
 
 
-Function build_mdarray(&$a, $keys, $v)  {
-	$k=array_shift($keys);
-	if (count($keys)===0)  {
-		if (isset($a[$k]))  {
-			if (is_array($a[$k]))  $a[$k][]=$v;
-			else  $a[$k]=array($a[$k], $v);  }
-		else  $a[$k]=$v;
-		return true;  }
-	if (isset($a[$k]))  {
-		if (!is_array($a[$k]))  return false;  }
-	else  $a[$k]=array();
-	return build_mdarray($a[$k], $keys, $v);  }
-
-Function array_keys_deep(&$A)  {
-	$keys=array();
-	array_walk_recursive($A, function($v, $k) use (&$keys)  {array_push($keys, $k);});
-	return $keys;  }
-
-
-Function syncdir($src_dir, $dest_dir, &$filepaths, $doKeepOrgCreationTime)  {
+Function syncdir($src_dir, $dest_dir, &$uniq, $¿keepOrgCreationTime, $¿removeTrackNums, $¿addTrackNums, $trackNumInc=1)  {
 	$sd_len=strlen($src_dir);
-	$replaced=array();
-	foreach ($filepaths as $k => &$path)  {
+	$uniq['destinations']=array();
+	$uniq['replaced']=array();
+	$i=0;
+	$c=count($uniq['paths'])*$trackNumInc;
+	$trackDigits= ($c<10) ? 1 : (($c<100) ? 2 : (($c<1000) ? 3 : (($c<10000) ? 4 : 5)));
+	foreach ($uniq['paths'] as $k => &$path)  {
 		$file=basename($path);  $dest_path=dirname($path).DIRECTORY_SEPARATOR;
 		if (substr($dest_path, 0, $sd_len)!==$src_dir)  throw new bad_form_data('internal error — Verified Pathname does not match Source Directory');
 		$subpath=substr($dest_path, $sd_len);
 		$dest_path=$dest_dir.$subpath;
+		$¿adjusted=adjustTrackNum($file, $¿removeTrackNums, $¿addTrackNums, $i+=$trackNumInc, $trackDigits);
 		$dest=$dest_path.$file;
-		$replaced[$k]=FALSE;
+		$uniq['replaced'][$k]=FALSE;
 		if (!is_dir($dest_path))  {mkdir($dest_path, 0777, true);  chmod($dest_path, 0777);}
 		else
-		if (is_file($dest))  $replaced[$k]=trash($file, $subpath, $dest_dir);
+		if (is_file($dest))  $uniq['replaced'][$k]=trash($file, $subpath, $dest_dir);
 		// note if copy fails, any matching file at the destination was still trashed!
 		if (copy($path, $dest))  {
-			if ($doKeepOrgCreationTime)  touch($dest, filemtime($path));  }
+			if ($¿keepOrgCreationTime)  touch($dest, filemtime($path));
+			$uniq['destinations'][$k]=($¿adjusted ? $file : FALSE);  }
 		else  $path=chr(24).$path;  }  //  ASCII CAN  “cancel”
-	return $replaced;  }
+	return $uniq;  }
+
+// note this scheme will/may not work well with subfolders!
+Function adjustTrackNum(&$file, $¿remove, $¿add, $i, $trackDigits)  {
+	//  "409 title_and_performer.wav"
+	//  "409. title_and_performer.wav"
+	//  "409- title_and_performer.wav"
+	//  "409 . title_and_performer.wav"
+	//  "409 - title_and_performer.wav"
+	//  "409) title_and_performer.wav"
+	//  "(409) title_and_performer.wav"
+	$¿adjusted=FALSE;
+	if ($¿remove  AND  preg_match('/^(\d+(?:\s?[-.])?|\(?\d+\))\s+/', $file, $matches))  {
+		$¿adjusted=TRUE;
+		$file=substr($file, strlen($matches[0]));  }
+	if ($¿add)  {
+		$¿adjusted=TRUE;
+		$file=str_pad($i, $trackDigits, "0", STR_PAD_LEFT).". ".$file;  }
+	return $¿adjusted;  }
 
 Function trash($file, $path, $root)  {
 	switch ($_POST['trash'])  {
@@ -1550,19 +1709,27 @@ try {
 		($_POST['verified']['syncMethod']==="bi-directional") ? "and" : "to",
 		"<path>",htmlentities($_POST['verified']['dir1']),"</path></h1>\n";
 
+	$trackNumInc=  (max(1, min(100, round(floatval($_POST['trackNumInc'])))));
+
 	if (count($_POST['verified']['in_dir1'])>0)  {
 		$uniq=array('paths'=> &$_POST['verified']['in_dir1']);
-		$uniq['replaced']=
-			syncdir($_POST['verified']['dir1'], $_POST['verified']['dir2'], $uniq['paths'], $_POST['preserveCreationTime']==='yes');
+		syncdir($_POST['verified']['dir1'], $_POST['verified']['dir2'], $uniq,
+						$_POST['preserveCreationTime']==='yes',
+						$_POST['removeTrackNums']==='yes',
+						$_POST['addTrackNums']==='yes',
+						$trackNumInc);
 		$tree=build_dir_tree($_POST['verified']['dir1'], $uniq['paths']);
-		show_dir($tree, $uniq, FALSE,  COMINGLE);  }
+		show_dir($tree, $uniq, FALSE, FALSE,  $_POST['comingle']==='yes', "");  }
 
 	if (count($_POST['verified']['in_dir2'])>0)  {
 		$uniq=array('paths'=> &$_POST['verified']['in_dir2']);
-		$uniq['replaced']=
-			syncdir($_POST['verified']['dir2'], $_POST['verified']['dir1'], $uniq['paths'], $_POST['preserveCreationTime']==='yes');
+		syncdir($_POST['verified']['dir2'], $_POST['verified']['dir1'], $uniq,
+						$_POST['preserveCreationTime']==='yes',
+						$_POST['removeTrackNums']==='yes',
+						$_POST['addTrackNums']==='yes',
+						$trackNumInc);
 		$tree=build_dir_tree($_POST['verified']['dir2'], $uniq['paths']);
-		show_dir($tree, $uniq, FALSE,  COMINGLE);  }
+		show_dir($tree, $uniq, FALSE, FALSE, $_POST['comingle']==='yes', "");  }
 
 	echo "</div>";
 
