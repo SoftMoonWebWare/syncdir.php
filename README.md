@@ -31,8 +31,8 @@ If you have several archive folders with many of the same files in each but not 
 you can use syncdir.php to make one unified archive.
 It can even find the files stuffed in different folders when your archive structures are dis-similar.
 
-# 3. Archive files (¡not tested!)
-Using the “Archive Mode” you can copy files from a source to a destination, avoiding any similar files found in an “archive folder”.
+# 3. Archive files
+Using the “Archive Mode” you can copy files from a source to a destination, avoiding any matching files found in an “archive folder”.
 The “archive folder” may be any folder (the destination folder by default).
 The folder/directory tree structure of the “archive folder” does not matter, and does not need to match the tree structure of the source.
 However, when the files are copied, the folder/directory tree structure is maintained from the source to the destination.
@@ -53,15 +53,21 @@ then copy (backup) them to your thumb-drive with the "sort files" option checked
 - you can (further) sort your files by hand into the order you want using the mouse to drag and drop them.
 SyncDir can automatically remove existing track numbers from the destination filenames if you don’t want them.
 SyncDir can automatically add track numbers to the destination filenames in the order you arrange them, if you want.
+When auto-adding track numbers, tracks are numbered in-continuum; i.e. the order they play.
+If there are subfolders, the track numbers do *not* reset to “1” for each folder.
+This way, you can find the track displayed on your car radio, no matter how many folders deep, with relative ease.
+Otherwise, create each subfolder individually.
 
 # Options:
+- archive mode on/off
 - check subfolders
 - check file ages
 - case-sensitive
+- show file sizes
 - look for similar files
 - preserve file creation time
 - sort files alphabetically when copying
-- comingle (or not) folders with files when sorting
+- co-mingle (or not) folders with files when sorting
 - remove existing track numbers
 - add track numbers
 - track number increment (when automatically adding track numbers)
@@ -103,6 +109,12 @@ I’ve been using it for a while mostly without problems, except:
  It’s hard to know WHAT exactly PHP is doing…in that case I was transferring a large sum of data…
  was it going slow?  Five files copied (I could see in Windows Explorer), then nothing,
  and the browser just said “waiting on the server”.
+* Another time, something seemed to get whacked in the Windows® filesystem.
+ I think my new USB drive doesn’t fit tight enough in the USB socket, or the socket may be wearing out.
+ While using SyncDir to copy a large batch of files, it got hung up, similar to the above situation.
+ I think the USB cord got knocked slightly and the drive was uninstalled and then reinstalled by Windows®
+ while PHP was in the process of copying files.
+ Again, this is a PHP thing and a hardware problem, not an internal logical problem with this software.
 * A few times the “verify first” option simply did not work.  WHY?  IDK!
  I didn’t have time to dig in and start logging everything PHP did, or even try again to do so.
  Other times it works perfectly.  When it fails, there is no error message,
@@ -110,12 +122,15 @@ I’ve been using it for a while mostly without problems, except:
  Just nothing gets synced/copied, as if you selected no files to sync/copy.
  I've looked at the code again and again, but did not see any reason why it might fail,
  other than the data did not transfer from the browser to PHP correctly for some reason.
- Since then, I've been using it without any problem!  Wierd, huh!
+ Since then, I've been using it without any problem!  Weird, huh!
+ The code has been updated, enhanced, expanded, etc, but the “verified” section remains fairly stable, so...?
  Playing with the filesystem while debugging is not something I want to do everyday,
  so IDK when I will look into that by trying to flubber it.
  I think I remember trying to sync many, many, many “verified first” files at once, and it failed.
  It worked when I only verified a few, if that’s a hint.
- However, again, since then, I’ve bulk copied a very large sum of files, again and again as I make a new SSD backup of all my stuff from a HDD archive, as well as sync two different old achive drives and my current working drive, with no problem.
+ However, again, since then, I’ve bulk copied a very large sum of files,
+ again and again as I make a new SSD backup of all my stuff from a HDD archive,
+ as well as sync two different old archive drives and my current working drive, with no problem.
  Debugging code that fails under unknown circumstances is tricky.
  Doing so while your code is continuously modifying the filesystem is a real PITA!
 
