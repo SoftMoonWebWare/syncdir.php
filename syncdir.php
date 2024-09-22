@@ -24,14 +24,14 @@
 			https://softmoon-webware.com/humane-use-license/
 			https://www.gnu.org/licenses/#AGPL    /*/
 
-/*  This ALPHA release has been tested on a Windows NT system with Apache 2.0 and PHP version 7.1.6 ; 8.1.6 ; 8.2.12
+/*  This ALPHA release has been tested on a Windows® NT system with Apache 2.0 and PHP version 7.1.6 ; 8.1.6 ; 8.2.12
  *  I’ve been using it for a while mostly without problems, except:
  *  • I’ve seen my USB thumb-drive apparently overheat and become unresponsive.
  *   This is a hardware problem (video driver gets hot and heats up the metal-casing on the thumb-drive 1" away)
  *   and was solved by moving the thumb-drive to another USB port.
  *   However, PHP “locks-up” waiting for it, and I had to close the server and browser.
  *   It’s hard to know WHAT exactly PHP is doing…in that case I was transferring a large sum of data…
- *   was it going slow?  Five files copied (I could see in Windows Explorer), then nothing,
+ *   was it going slow?  Five files copied (I could see in Windows® Explorer), then nothing,
  *   and the browser just said “waiting on the server”.
  *   Did a bug cause an endless loop?  Not in this case, but I was left guessing at first…
  *   Note the max_execution_time is set below so PHP will not stop automatically,
@@ -73,7 +73,7 @@ else  {
 
 // these are for checking user input
 define('EXT', '#^[^\\\\/?:;*"<>|]+$#');
-if (MS_WINDOWS)  { // MS Windows directory separator
+if (MS_WINDOWS)  { // MS Windows® directory separator
 	define('NAME', '#^\\\\$|^(\\\\)?[^\\\\/?:;*"<>|]+(?(1)[^\\\\/?:;*"<>|]|[^/?:;*"<>|])$#');
 	define('PATH', '#^(([A-Z]:\\\\)?[^/:;?*"<>|]+)|([A-Z]:\\\\)$#i');  }
 else  { // Mac OS/LINUX/UNIX directory separator
@@ -89,7 +89,7 @@ define ('EXPANDER',
 
 if (!defined('FNM_CASEFOLD'))  define ('FNM_CASEFOLD', 16);  // for Function filter()
 
-
+define ('FOLDERS_FIRST', true);
 ?>
 <!DOCTYPE html>
 <html>
@@ -98,7 +98,7 @@ if (!defined('FNM_CASEFOLD'))  define ('FNM_CASEFOLD', 16);  // for Function fil
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <meta name='author' content='Joe Golembieski, SoftMoon-WebWare'>
 <meta name='copyright' content='Copyright © 2021, 2024 Joe Golembieski, SoftMoon-WebWare'>
-<title>Synchronize Directories</title>
+<title>SyncDir.php</title>
 <style type="text/css">
 body {
 	color: lime;
@@ -122,7 +122,7 @@ h1 {
 	font-weight: bold;
 	font-size: 2em;
 	color: aqua;
-	margin-top: 0.162em;
+	margin: 0.162em 7em 1em 0;
 	padding: 0; }
 size,
 path,
@@ -179,6 +179,9 @@ arrow,
 .helplink,
 help span {
 	font-size: 1.618em; }
+arrow {
+	line-height: 0.618em;
+	vertical-align: -10.618%; }
 th .helplink {
 	display: block; }
 .helplink a,
@@ -189,7 +192,7 @@ help span {
 .helplink a:visited,
 a.helplink:visited {
 	color: orange; }
-mark, note {
+mark, note, p strong {
 	color: Violet; }
 mark {
 	font-size: 0.618em;
@@ -207,6 +210,9 @@ note h3 {
 	padding: 0;
 	margin: 0;
 	text-align: center; }
+fieldset > p {
+	text-align: justify;
+	margin: 0.618em 0.382em; }
 note p {
 	display: inline-block;
 	width: 34em;
@@ -250,8 +256,9 @@ label.folder {
 	display: block; }
 #dirInput label.folder {
 	text-indent: -0.618em; }
-#dirInput label.folder:last-child {
-	margin-top: .2618em; }
+#dirInput fieldset {
+	margin: 0.618em 0;
+	border: none; }
 #dirInput span {
 	font-size: 1.618em;  }
 label.folder input {
@@ -307,7 +314,7 @@ form#verifier {
 #verifier li > span.expand,
 #verifier li.expand > span,
 #verifier div > span.expand,
-#verifier div.expand > span{
+#verifier div.expand > span {
 	display: inline; }
 #verifier .expand > ul {
 	display: block; }
@@ -317,7 +324,7 @@ form#verifier {
 	border-left: 1px dotted; }
 #verifier div.similar {
 	display: inline-block;
-	text-align: top; }
+	vertical-align: top; }
 #verifier path.replaced + div.similar,
 #verifier div.expand {
 	display: block; }
@@ -329,9 +336,14 @@ form#verifier {
 #verifier div.similar,
 #verifier div.similar * {
 	color: orange !important; }
-#verifier mark,
+#verifier mark {
 	color: red;
 	margin: 0 1em; }
+
+#totals spec {
+	margin: 0 1.618em; }
+#totals desc {
+	margin-right: 1em; }
 
 #options {
 	position: relative;
@@ -472,9 +484,9 @@ footer {
 const
 	is_MS_Windows=(navigator.platform.search(/Win/i)!==(-1)),
 	DIR_SEP= is_MS_Windows ? "\\" : "/",
-	transpose=new Array(
-		"1!2@%6^7&8*=+/?[{}]|\\'\"",
-		"●¡©®°☺☻♪♫×☼≈±÷¿‘“”’¦¶πφ" );
+	transpositions={
+		keys: "1!2@%6^7&8*=+/?[{}]|\\'\"",
+		ctrl: "●¡©®°☺☻♪♫×☼≈±÷¿‘“”’¦¶πφ" };
 
 var tabbedOut=false;
 
@@ -493,8 +505,8 @@ function enhanceKeybrd(event)  { // typically for American QWERTY keyboards
 		event.target.selectionEnd=curPos+txt.length;
 		event.preventDefault();  }
 	var p;
-	if (event.ctrlKey  &&  (p=transpose[0].indexOf(event.key)) >= 0)  {
-		addText(transpose[1][p]);
+	if (event.ctrlKey  &&  (p=transpositions.keys.indexOf(event.key)) >= 0)  {
+		addText(transpositions.ctrl[p]);
 		return;  }
 	switch (event.key)  {
   case '*':
@@ -555,21 +567,40 @@ RegExp.escape=function (string) {
 
 // ===================================================
 
+function align_archive_mode(event)  {
+	if (event.target.closest('fieldset').id==="archive_mode"
+	&&  event.target.type==='radio')  {
+		if (event.target.value==='off')  return;
+		const
+			mode=document.querySelector('input[name="archive_mode"]:checked').value,
+			others=document.querySelectorAll('input[archiverMode]');
+		for (const inp of others)  {
+			const chkd=(inp.getAttribute('archiverMode')===mode);
+			inp.checked=chkd;
+			inp.parentNode.classList.toggle('checked', chkd);  }  }
+	else if (event.target.getAttribute('archiverInfluence')==='off')  {
+		const off=document.querySelector('input[name="archive_mode"][value="off"]');
+		off.checked=true;
+		off.parentNode.classList.add('checked');
+		off.parentNode.previousElementSibling.classList.remove('checked');  }  }
+
+
 function sync_verified_form(event)  {
 	const inp=document.querySelector('input[type="hidden"][name="'+event.target.name+'"]');
 	if (inp)  inp.value=event.target.value;  }
 
 // this is called when a directory name is (un)checked in the “verify” file-tree
-function check_all_in_dir(e)  {
+function check_all_in_dir(event, e)  {
 	event.stopPropagation();
 	for (var i=1, inps=e.closest("li").getElementsByTagName('input'); i<inps.length; i++)  {
 		if (inps[i].type==='checkbox')  inps[i].checked=e.checked;  }
-	check_dir(e.closest('ul'), e.checked);  }
+	check_dir(event, e.closest('ul'), e.checked);  }
 
 // this is called when an individual file is (un)checked in the “verify” file-tree
 // the onchange event bubbles up to the UL
-function check_dir(ul, chkd)  {
+function check_dir(event, ul, chkd)  {
 	event.stopPropagation();
+	get_size_totals(event);
 	try {
 		if (chkd===false)  throw false;
 		for (const inp of ul.getElementsByTagName('input'))  {
@@ -578,7 +609,17 @@ function check_dir(ul, chkd)  {
 		throw true;  }
 	catch (b) {
 		ul.parentNode.querySelector('input').checked=b;
-		if (ul=ul.parentNode.closest('ul'))  check_dir(ul, b);  }  }
+		if (ul=ul.parentNode.closest('ul'))  check_dir(event, ul, b);  }  }
+
+function get_size_totals(event)  {
+	const div=document.querySelector('div#totals');
+	if (div)  {
+		const chkd=event.target.form.querySelectorAll('input[name]:checked');  //folder checkboxes don’t have names
+		div.firstElementChild.lastChild.data=chkd.length;
+		var total=0;
+		for (const inp of chkd)  {total+=parseInt(inp.nextElementSibling.firstChild.data);}
+		div.lastElementChild.lastChild.data=total.toLocaleString();  }  }
+
 
 function drag_entry(event)  {
 	if (event.target.nodeName==='INPUT'
@@ -612,19 +653,6 @@ function drag_entry(event)  {
 		||  next_li===null
 		||  event.target.closest('ul')!==ul)  return;
 		ul.insertBefore(li, next_li);  }  }
-
-
-function set_archive_mode(event)  {
-	if (event.target.closest('fieldset').id==="achive_mode"
-	&&  event.target.type==='radio')  {
-		const
-			mode=document.querySelector('input[name="archive_mode"]:checked').value,
-			others=document.querySelector('input[archiverInfluence]');
-		for (const inp of others)  {
-			inp.checked= (inp.getAttribute('archiverInfluence')===mode);  }  }
-	else if (event.target.getAttribute('archiverInfluence')==='off')
-		document.querySelector('input[name="archive_mode"][value="off"]').checked=true;  }
-
 
 // this is called when a group of filename extensions is (un)checked
 function check_all_in_group(e)  {
@@ -701,6 +729,7 @@ if (isset($_POST['submit']))  {   // WRAP MAIN PROCESSING SECTION **************
 	//  echo "<pre>",var_dump($_POST),"</pre>";
 	Class bad_form_data extends Exception {}
 
+
 //  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 if ($_POST['submit']==='verified')  {
 	goto Verified_Section;  // at file end
@@ -739,9 +768,10 @@ try {
 		'POSIX_wildcards' => check_array($_POST['filter_in']['POSIX_wildcards']) ) );
 
 
-	$_POST['CaseInsense']= ($_POST['case_sense']==="no"  or  ($_POST['case_sense']==="auto"  and  MS_WINDOWS)) ?
+	$¿caseInsense= ($_POST['case_sense']==="no"  or  ($_POST['case_sense']==="auto"  and  MS_WINDOWS)) ?
 						FNM_CASEFOLD : 0;  // this specific logic is used by Function filter() for POSIX Wildcards
-	if ($_POST['CaseInsense'])  {
+
+	if ($¿caseInsense)  {
 		$filters['in']['exts']=array_map('uncase', $filters['in']['exts']);
 		$filters['in']['files']=array_map('uncase', $filters['in']['files']);
 		$filters['in']['paths']=array_map('uncase', $filters['in']['paths']);
@@ -768,12 +798,14 @@ try {
 	and  count($filters['in']['POSIX_wildcards'])===0 )
 		$_POST['filter_order']= ($_POST['filter_order']==='in') ?  'none' : 'out';
 
-	$dir1=read_dir($_POST['dir_1'], $filters, $_POST['recursive']==='no', $_POST['sort']==='yes');
-	$dir2=read_dir($_POST['dir_2'], $filters, $_POST['recursive']==='no', $_POST['sort']==='yes');
+	$dir1=read_dir($_POST['dir_1'], $filters, $_POST['recursive']==='no', $_POST['sort']==='yes', $¿caseInsense, $_POST['comingle']==='yes');
+	$dir2=read_dir($_POST['dir_2'], $filters, $_POST['recursive']==='no', $_POST['sort']==='yes', $¿caseInsense, $_POST['comingle']==='yes');
 //	echo "<pre>",var_dump($dir1, $dir2),"</pre>";
 
-	if ($_POST['archive_mode']==='on')
-		$archiveDir= read_archive($_POST['archive_folder'] or $_POST['dir_1'], $filters);
+	if ($_POST['archive_mode']==='on')  {
+		$archiveDir=$_POST['archive_folder'] ? $_POST['archive_folder'] : $_POST['dir_1'];
+		if (is_dir($archiveDir))  $archiveDir= read_archive($archiveDir, $filters, $¿caseInsense);
+		else throw new bad_form_data("Bad Archive Directory — Directory not found: ".$d);  }
 	else  $archiveDir=null;
 
 	switch ($_POST['submit'])  {
@@ -804,7 +836,7 @@ try {
 	case "bi-directional":
 		echo "<h1>$h1 <path>",htmlentities($_POST['dir_1']),"</path> to <path>",htmlentities($_POST['dir_2']),"</path></h1>\n";
 		$uniq=find_unique($dir1, $dir2, $archiveDir, $_POST['check_ages']==='no');
-		$filecount+=count($uniq['paths']);
+		$filecount+=count($uniq['Paths']);
 		if ($_POST['find_similar']==='yes')  find_misplaced($uniq, $dir2);
 		if ($_POST['submit']==="sync ’em")
 			syncdir($_POST['dir_1'], $_POST['dir_2'], $uniq,
@@ -812,7 +844,7 @@ try {
 							$_POST['removeTrackNums']==='yes',
 							$_POST['addTrackNums']==='yes',
 							$trackNumInc);
-		$tree=build_dir_tree($_POST['dir_1'], $uniq['paths']);
+		$tree=build_dir_tree($_POST['dir_1'], $uniq['Paths']);
 		show_dir($tree, $uniq,
 						 $_POST['submit']==='verify first' ? 'in_dir1' : FALSE,
 						 $_POST['show_sizes']==='yes',
@@ -821,7 +853,7 @@ try {
 	case "uni-directional":
 		echo "<h1>$h1 <path>",htmlentities($_POST['dir_2']),"</path> to <path>",htmlentities($_POST['dir_1']),"</path></h1>\n";
 		$uniq=find_unique($dir2, $dir1, $archiveDir, $_POST['check_ages']==='no');
-		$filecount+=count($uniq['paths']);
+		$filecount+=count($uniq['Paths']);
 		if ($_POST['find_similar']==='yes')  find_misplaced($uniq, $dir1);
 		if ($_POST['submit']==="sync ’em")
 			syncdir($_POST['dir_2'], $_POST['dir_1'], $uniq,
@@ -829,7 +861,7 @@ try {
 							$_POST['removeTrackNums']==='yes',
 							$_POST['addTrackNums']==='yes',
 							$trackNumInc);
-		$tree=build_dir_tree($_POST['dir_2'], $uniq['paths']);
+		$tree=build_dir_tree($_POST['dir_2'], $uniq['Paths']);
 		show_dir($tree, $uniq,
 						 $_POST['submit']==='verify first' ? 'in_dir2' : FALSE,
 						 $_POST['show_sizes']==='yes',
@@ -840,7 +872,10 @@ try {
 
 	switch ($_POST['submit'])  {
 	case "verify first":
-		if ($filecount>0)  echo "\n<input type='submit' name='submit' value='verified'>\n";
+		if ($filecount>0)  {
+			if ($_POST['show_sizes']==='yes')
+				echo "\n<div id='totals'><spec><desc>total selected files:</desc>0</spec><spec><desc>total selected bytes:</desc>0</spec></div>";
+			echo "\n<input type='submit' name='submit' value='verified'>\n";  }
 		echo "</form>\n";
 	break;
 	case "report only":  echo "</div>\n";
@@ -856,27 +891,41 @@ catch (bad_form_data $e)  {$errorHTML="<h5>".$e->getMessage()."</h5>\n";}
  //  *************  here is the main initial HTML page  ************************************************************
 ?>
 
-<h1>Synchronize Directory Folders</h1>
+<h1>Create, Copy, Backup, Synchronize, &amp; Archive Directory Folders</h1>
 <?php echo $errorHTML; ?>
 <aside>Click<span> or hover</span> on <span class='helplink'>☻</span>s for help</aside>
 <form action="syncdir.php" method='post' onkeydown='enhanceKeybrd(event);'>
-<div id='options'>
+<div id='options' onchange='align_archive_mode(event)'>
 	<fieldset id='dirInput'>
 	<label class='folder'>folder1 path <input type='text' name='dir_1' value='<?php echo htmlentities($_POST['dir_1']);?>'></label>
-	Synchronize files:&nbsp;
-	<label title="bi-directional">between both <arrow>&#x21F3;</arrow> folders<arrow>&#x21D5;</arrow><input type='radio' name='sync_method' value="bi-directional" archiverInfluence='off' <?php
-		if ($_POST['sync_method']=="bi-directional")  echo CHKD; ?>></label>
-	<label title="uni-directional"><input type='radio' name='sync_method' value="uni-directional" archiverInfluence='on' <?php
-		if ($_POST['sync_method']!="bi-directional")  echo CHKD; ?>><arrow>&#x21D1;</arrow>from folder2 to <arrow>&#x21E7;</arrow> folder1</label>
+	<fieldset>
+		Synchronize files:&nbsp;
+		<label title="bi-directional">between both <arrow>&#x21F3;</arrow> folders<arrow>&#x21D5;</arrow><input type='radio' name='sync_method' value="bi-directional"
+			archiverInfluence='off' archiverMode='off' <?php
+			if ($_POST['sync_method']=="bi-directional")  echo CHKD; ?>></label>
+		<label title="uni-directional"><input type='radio' name='sync_method' value="uni-directional"
+			archiverInfluence='on' archiverMode='on' <?php
+			if ($_POST['sync_method']!="bi-directional")  echo CHKD; ?>><arrow>&#x21D1;</arrow>from folder2 to <arrow>&#x21E7;</arrow> folder1</label>
+	</fieldset>
 	<label class='folder'>folder2 path <input type='text' name='dir_2' value='<?php echo htmlentities($_POST['dir_2']);?>'></label>
 	<help><span>☻</span><p>It is best to define paths from the root <?PHP echo MS_WINDOWS ? "drive (or user," : "user (or drive,"; ?>
 	depending on <abbr title='Operating System'>OS</abbr>)
 	and not to rely on <abbr>PHP</abbr> relative or “include” paths.</p></help>
 	</fieldset>
-	<fieldset id='archiveMode'><legend>Archive Mode</legend>
-	<p>Archive mode is only uni-directional.&nbsp;
-	It ignores files in the source directory/folder (and optionally its subfolders)
-	that are found <em>anywhere</em> in the archive directory/folder (and optionally its subfolders).&nbsp;
+	<fieldset id='archive_mode'><legend>Archive Mode</legend>
+	<p>Archive mode is primarily intended to help you keep backups of completed projects
+	as well as of files that do not change once created:
+	pictures, music, etc.&nbsp;
+	<strong>Archive mode is only uni-directional (from folder2 <arrow>&#x21DB</arrow> to folder1).</strong>&nbsp;
+	It ignores files in the source directory/folder (and optionally its subfolders recursively)
+	that are found to match another file <em>anywhere</em> in the archive directory/folder or recursively its subfolders.&nbsp;
+	However, archive files and subfolders are still subject to all “filters”,
+	and therefore may be either filtered out or not filtered in of consideration, depending on your “filter” options below.&nbsp;
+	Contrast “matching” files with “similar” files:
+	“matching” files have both the same name and size, whereas
+	“similar” files have the same name and/or the same size.&nbsp;
+	In archive mode, files found in the archive folder do <em>not</em> have their
+	file update times compared with the source files’ update times.&nbsp;
 	The archive folder may be any directory/folder;
 	if you leave it blank, the destination folder (folder1) becomes the archive folder by default.&nbsp;
 	As usual, files in the source folder that are found in the destination folder
@@ -910,9 +959,9 @@ catch (bad_form_data $e)  {$errorHTML="<h5>".$e->getMessage()."</h5>\n";}
 	echo php_uname('s'), (stripos(php_uname('s'), "win")===FALSE) ? " =Yes" :" =No" ; ?></label>
 	</fieldset>
 	<fieldset><legend>Look for similar files when unmatched?</legend>
-	<label><input type='radio' name='find_similar' value='yes' archiverInfluence='on' <?php
+	<label><input type='radio' name='find_similar' value='yes' <?php
 		if ($_POST['find_similar']!="no")  echo CHKD; ?>>Yes</label>
-	<label><input type='radio' name='find_similar' value='no' archiverInfluence='off' <?php
+	<label><input type='radio' name='find_similar' value='no' <?php
 		if ($_POST['find_similar']=="no")  echo CHKD; ?>>No</label>
 	</fieldset>
 	<fieldset onchange='sync_verified_form(event)'><legend>Show file sizes?</legend>
@@ -936,7 +985,7 @@ catch (bad_form_data $e)  {$errorHTML="<h5>".$e->getMessage()."</h5>\n";}
 		</fieldset>
 		<label><input type='checkbox' name='comingle' value='yes' onchange='sync_verified_form(event)'<?php
 			if ($_POST['comingle']=="yes")  echo CHKD; ?>>Comingle folders with files?</label>
-		<help onmouseenter='keep_help_visible(event)'><span>☻</span><p>This feature is for car radios and such
+		<help onmouseenter='keep_help_visible(event)'><span>☻</span><p>These features are for car radios and such
 		that play songs in the order they were physically copied to a <abbr>USB</abbr> thumb-drive.&nbsp;
 		If you choose to “verify first” before copying,
 		you may further hand-sort the order files are <strong><em>physically copied</em></strong>
@@ -1018,11 +1067,11 @@ with a large number of files in the directories to be synced.</p></help>
 <note><h3><mark>‡</mark>International Characters</h3>
 <?php if (INTERNATIONAL_CHARS_SUPPORTED): ?>
 <p>Directories must be character-encoded in <abbr>UTF-8</abbr>
-(such as Microsoft Windows’ <abbr>NT</abbr> File System (<abbr>NTFS</abbr>) and <acronym>exFAT</acronym> formats)
+(such as Microsoft Windows’® <abbr>NT</abbr> File System (<abbr>NTFS</abbr>) and <acronym>exFAT</acronym> formats)
 for use with International characters when case-<em>in</em>sensitive.&nbsp;
 <acronym>FAT</acronym>, <acronym>FAT16</acronym>, &amp; <acronym>FAT32</acronym> file systems
 (typically found on <abbr>USB</abbr> “thumb drives”) often use the
-Windows’ “<abbr title='Original Equipment Manufacturer'>OEM</abbr>” character-set
+Windows’® “<abbr title='Original Equipment Manufacturer'>OEM</abbr>” character-set
 which typically differs from <abbr>UTF-8</abbr>.&nbsp;
 <?php else: ?>
 <p>This installation of <abbr>PHP</abbr> does not support International characters,
@@ -1030,8 +1079,8 @@ so files and directory folder names that have them
 can not be properly compared in a case-<em>in</em>sensitive way.&nbsp;
 Also, <acronym>FAT</acronym>, <acronym>FAT16</acronym>, &amp; <acronym>FAT32</acronym> file systems
 (typically found on <abbr>USB</abbr> “thumb drives”) often use the
-Windows “<abbr title='Original Equipment Manufacturer'>OEM</abbr>” character-set encoding
-which typically differs from Microsoft Windows’ <abbr>NT</abbr> File System (<abbr>NTFS</abbr>)
+Windows® “<abbr title='Original Equipment Manufacturer'>OEM</abbr>” character-set encoding
+which typically differs from Microsoft Windows’® <abbr>NT</abbr> File System (<abbr>NTFS</abbr>)
 and <acronym>exFAT</acronym> formats that use <abbr>UTF-8</abbr> encoding.&nbsp;
 <?php endif; ?>
 Files saved with the same name using International characters in different directory formats
@@ -1190,7 +1239,7 @@ do { ?>
 <td>
 	<label id='AllFolders'><input type='checkbox' name='filter_in[files][]' value="<?php echo DIRECTORY_SEPARATOR; ?>" <?php
 		if (($¿isA=is_array($_POST['filter_in']['files']))
-		and  FALSE !== ($k=@array_search(DIRECTORY_SEPARATOR, $_POST['filter_in']['files'])))  {
+		and  FALSE !== ($k=@array_search(DIRECTORY_SEPARATOR, $_POST['filter_in']['files'], true)))  {
 			echo CHKD;  unset($_POST['filter_in']['files'][$k]);  }
 		?>> <?php echo DIRECTORY_SEPARATOR; ?> &nbsp; <note>(this means all directory folders)</note></label>
 <?php  $fn="";  do {
@@ -1446,111 +1495,140 @@ Function check_array(&$a, $pattern=FALSE, $err_msg="")  { if ($a==NULL)  return 
 	and count($temp)>0)  throw new bad_form_data($err_msg);
 	return ($a);  }
 
-Function read_dir($dir, &$filters, $¿shallow=false, $¿sort=true)  {
+
+Function read_dir($dir, &$filters, $¿shallow=false, $¿sort=true, $¿caseInsense=true, $¿comingleFolders=true)  {
 	if (substr($dir, -1, 1)!==DIRECTORY_SEPARATOR)  $dir.=DIRECTORY_SEPARATOR;
-	$filelist = array();  $filepaths = array();  $subdirs=array();
+	$files = array('.'=>$dir, 'Names'=>array(), '?names'=>array(), 'Paths'=>array(), '~subdirs'=>array());
+	if (!$¿comingleFolders)
+		$folders = array('Names'=>array(), '?names'=>array(), 'Paths'=>array(), '~subdirs'=>array());
 	$d = dir($dir);
 	while (false !== ($entry = $d->read()))  {
 		if ($entry==='.'  or  $entry==='..'  or  $entry===""
-		or  filter_file($entry, $dir.$entry, $filters, $srch_val))  continue;
-		if (is_dir($dir.$entry))  {                  // ↑ value is returned
-			if ($¿shallow)  continue;
-			$subdirs[$entry] = null;  }
-		else {
-			$filelist[] = $entry;
-			$filepaths[] = $srch_val;  }  }
+		or  ( ($¿isDir=is_dir($dir.$entry))  and  $¿shallow )
+		or  filter_file($entry, $dir.$entry, $filters, $¿caseInsense, $srch_val))  continue;
+		if ($comingleFolders  or  (!$¿isDir))  {                      // ↑↑↑ \\ $srch_val is returned
+			$files['Names'][] = $entry;
+			$files['?names'][] = $srch_val;  // lowercase if case-insensitive
+			$files['Paths'][] = $dir.$entry;
+			$files['~subdirs'][]= ($¿isDir ? read_dir($dir.$entry, $filters, $¿shallow, $¿sort, $¿caseInsense, $¿comingleFolders) : null);  }
+		else  {
+			$folders['Names'][] = $entry;
+			$folders['?names'][] = $srch_val;  // lowercase if case-insensitive
+			$folders['Paths'][] = $dir.$entry;
+			$folders['~subdirs'][]= read_dir($dir.$entry, $filters, $¿shallow, $¿sort, $¿caseInsense, $¿comingleFolders);  }  }
 	$d->close();
-	if ($¿sort  &&  count($filelist))  {
-		array_multisort(
-			$filelist,
-			SORT_ASC,
-			$¿sort=SORT_NATURAL | ($_POST['CaseInsense'] ? SORT_FLAG_CASE : 0),
-			$filepaths );  }
-	if (count($subdirs))  {
-		if ($¿sort)  ksort($subdirs, $¿sort);
-		foreach ($subdirs as $subdir => &$d)  {$d = read_dir($dir.$subdir, $filters, $¿shallow, $¿sort);}
-		$filelist['/']=$subdirs;  }
-	$filelist['.']=$dir;
-	$filelist['?']=$filepaths;
-	return $filelist;  }
+	if ($¿sort)  {
+		if (count($files['Names']))
+			array_multisort(
+				$files['Names'],
+				SORT_ASC,
+				SORT_NATURAL | ($¿caseInsense ? SORT_FLAG_CASE : 0),
+				$files['?names'], $files['Paths'], $files['~subdirs']);
+		if ((!$¿comingleFolders)  and  count($folders['Names']))
+			array_multisort(
+				$folders['Names'],
+				SORT_ASC,
+				SORT_NATURAL | ($¿caseInsense ? SORT_FLAG_CASE : 0),
+				$folders['?names'], $folders['Paths'], $folders['~subdirs']);  }
+	if ((!$¿comingleFolders)  and  count($folders['Names']))
+		$files= (FOLDERS_FIRST ? array_merge_recursive($folders, $files) : array_merge_recursive($files, $folders));
+	return $files;  }
 
-Function read_archive($dir, &$filters, &$filelist=array(), &$filepaths=array())  {
+
+Function read_archive($dir, &$filters, $¿caseInsense, &$filelist=array(), &$filepaths=array(), $¿recursing=false)  {
 	if (substr($dir, -1, 1)!==DIRECTORY_SEPARATOR)  $dir.=DIRECTORY_SEPARATOR;
 	$d = dir($dir);
 	while (false !== ($entry = $d->read()))  {
 		if ($entry==='.'  or  $entry==='..'  or  $entry===""
-		or  filter_file($entry, null, $filters, $srch_val))  continue;
-		if (is_dir($dir.$entry))              // ↑ value is returned
-			read_archive($dir.$entry, $filters, $filelist, $filepaths);
+		or  filter_file($entry, null, $filters, $¿caseInsense, $srch_val))  continue;
+		if (is_dir($dir.$entry))                               // ↑↑↑ \\ value is returned
+			read_archive($dir.$entry, $filters, $¿caseInsense, $filelist, $filepaths, true);
 		else {
-			$filelist[] = $entry;
-			$filepaths[] = $srch_val;  }  }
+			$filelist[] = $srch_val;  // lowercase if case-insensitive
+			$filepaths[] = $dir.$entry;  }  }
 	$d->close();
-	return array('?'=>$filelist, '??'=>$filepaths);  }
+	if ($¿recursing  or  count($filelist)<1)
+		return null;
+	else
+		return array('?names'=>$filelist, 'Paths'=>$filepaths);  }
 
-// find directory entries that are in $dir1 that are not in $dir2 on the same path
+// find directory entries that are in $dir1 that are not anywhere in the $archiveDir or recursively its subfolders;
+// and not in $dir2 on the same path
 // (make sure they are the same file - length -)
 // or possibly if the age of a file in $dir1 is - younger - than the same file in $dir2
 Function find_unique(&$dir1, &$dir2, $archiveDir=null, $¿ignore_age=true, $subpath=DIRECTORY_SEPARATOR)  {
 	// NOTE: filesize() is accurate up to 2GB on 32bit systems, 4GB on 64bit systems; but still works for comparisons up to 4GB.
-	$unique=array('names'=>array(), '?'=>array(), 'sizes'=>array(), 'paths'=>array());
-	if (is_array($dir1['?']))  foreach ($dir1['?'] as $k => $filename)  {
-		$path1=$dir1['.'].$dir1[$k];
-		if ( ( is_array($dir2['?'])
-			and  is_numeric($k2=array_search($filename, $dir2['?']))  /* could be false or null or 0 */
-			and  filesize($path1)===filesize($path2 = $dir2['.'].$dir2[$k2])
+	$unique=array('Names'=>array(), '?names'=>array(), 'sizes'=>array(), 'Paths'=>array());
+	if (is_array($dir1['?names']))  foreach ($dir1['?names'] as $k => $filename)  {
+		if ($subdir1=$dir1['~subdirs'][$k])  {
+			$subdir2= (is_array($dir2['?names'])
+								 and  is_numeric($k2=(array_search($filename, $dir2['?names'], true)))
+								 and  $dir2['~subdirs'][$k2])  ?
+					$dir2['~subdirs'][$k2]
+				: array();  //we need to gather filesizes as well as merge, so we pass a dummy
+			$unique=array_merge_recursive( $unique,
+					find_unique($subdir1, $subdir2, $archiveDir, $¿ignore_age, $subpath.$dir1['Names'][$k].DIRECTORY_SEPARATOR) );
+			continue;  }
+		$path1=$dir1['.'].$dir1['Names'][$k];
+		$k2=false;
+		if ( ( is_array($dir2['?names'])
+			and  is_numeric($k2=array_search($filename, $dir2['?names'], true))  /* could be false or null or 0 */
+			and  $dir2['~subdirs'][$k2]==null
+			and  filesize($path1)===filesize($path2 = $dir2['.'].$dir2['Names'][$k2])
 			and  ($¿ignore_age
 						or  filemtime($path1)<=filemtime($path2)) )
-		or  (  is_array($archiveDir)
-			and  is_numeric($k3=array_search($filename, $archiveDir['?']))  /* could be false or null or 0 */
-			and  filesize($path1)===filesize($archiveDir['??'][$k3]) ))
+		or  (is_array($archiveDir)  and  in_archiveDir($filename, $path1, $archiveDir)))
 			continue;
-		$unique['names'][]=$dir1[$k];
-		$unique['?'][]=$filename;
+		$unique['Names'][]=$dir1['Names'][$k];
+		$unique['?names'][]=$filename;
 		$unique['sizes'][]=filesize($path1);
-		$unique['paths'][]=$path1;
-		$unique['subpaths'][]=$subpath;
+		$unique['Paths'][]=$path1;
+		$unique['SubPaths'][]=$subpath;
 		$unique['replaced'][]= is_numeric($k2);  }
-	if (isset($dir1['/']))  foreach ($dir1['/'] as $dirname => $subdir1)  {
-		$subdir2= isset($dir2['/']) ? (isset($dir2['/'][$dirname]) ? $dir2['/'][$dirname] : array()) : array();
-		$unique=array_merge_recursive( $unique,
-				find_unique($subdir1, $subdir2, $archiveDir, $¿ignore_age, $subpath.$dirname.DIRECTORY_SEPARATOR) );  }
 	return $unique;  }
+
+Function in_archiveDir($filename, $path, $archiveDir)  {
+	if (count($keys=array_keys($archiveDir['?names'], $filename, true)))
+		foreach ($keys as $k)  {
+			if (filesize($path)===filesize($archiveDir['Paths'][$k]))  return true;  }
+	return false;  }
+
 
 Function find_misplaced(&$unique, &$dir, $subpath=DIRECTORY_SEPARATOR)  {
 	if (!is_array($unique['similars']))  $unique['similars']=array();
-	if (is_array($dir['?']))
-		foreach ($dir['?'] as $dk => $filename)  {
-			$path=$dir['.'].$dir[$dk];
-			if (count($keys=array_keys($unique['?'], $filename)))
+	if (is_array($dir['Names']))
+		foreach ($dir['Names'] as $dk => $fileName)  {
+			if ($dir['~subdirs'][$dk])  {
+				find_misplaced($unique, $dir['~subdirs'][$dk], $subpath.$fileName.DIRECTORY_SEPARATOR);
+				continue;  }
+			$path=$dir['.'].$fileName;
+			if (count($keys=array_keys($unique['?names'], $dir['?names'][$dk])))
 				foreach ($keys as $uk)  {
-					if ($subpath===$unique['subpaths'][$uk])  continue;
+					if ($subpath===$unique['SubPaths'][$uk])  continue;
 					if (!is_array($unique['similars'][$uk]))  $unique['similars'][$uk]=array();
 					if (!in_array($path, $unique['similars'][$uk]))  $unique['similars'][$uk][]=$path;  }
 			if (count($keys=array_keys($unique['sizes'], filesize($path))))
 				foreach ($keys as $uk)  {
-					if ($subpath===$unique['subpaths'][$uk])  continue;
+					if ($subpath===$unique['SubPaths'][$uk])  continue;
 					if (!is_array($unique['similars'][$uk]))  $unique['similars'][$uk]=array();
-					if (!in_array($path, $unique['similars'][$uk]))  $unique['similars'][$uk][]=$path;  }  }
-	if (is_array($dir['/']))
-		foreach ($dir['/'] as $dirname => $subdir)  {find_misplaced($unique, $subdir, $subpath.$dirname.DIRECTORY_SEPARATOR);}  }
+					if (!in_array($path, $unique['similars'][$uk]))  $unique['similars'][$uk][]=$path;  }  }  }
 
 
-Function filter_file($filename, $path, &$filters, &$srch_val)  {
+Function filter_file($filename, $path, &$filters, $¿caseInsense, &$srch_val)  {
 	//return TRUE if file is to be - ignored -
 	//                                   ↓ strtolower, or mb_strtolower when supported
-	$srch_val= ($_POST['CaseInsense'] ?  uncase($filename) : $filename);
-	if ($_POST['CaseInsense'])  $path=uncase($path);
+	$srch_val= ($¿caseInsense ?  uncase($filename) : $filename);
+	if ($¿caseInsense)  $path=uncase($path);
 	switch ($_POST['filter_order'])  {
 		case "none":    return false;
-		case "in":      return filter($srch_val, $path, $filters['in'], false);
-		case "out":     return filter($srch_val, $path, $filters['out'], true);
-		case "in,out":  return filter($srch_val, $path, $filters['in'], false) or filter($srch_val, $path, $filters['out'], true);
-		case "out,in":  return filter($srch_val, $path, $filters['out'], true) or filter($srch_val, $path, $filters['in'], false);
+		case "in":      return filter($srch_val, $path, $filters['in'],  $¿caseInsense, false);
+		case "out":     return filter($srch_val, $path, $filters['out'], $¿caseInsense,  true);
+		case "in,out":  return filter($srch_val, $path, $filters['in'],  $¿caseInsense, false) or filter($srch_val, $path, $filters['out'], $¿caseInsense,  true);
+		case "out,in":  return filter($srch_val, $path, $filters['out'], $¿caseInsense,  true) or filter($srch_val, $path, $filters['in'],  $¿caseInsense, false);
 		case "in or out":
-			return filter($srch_val, $path, $filters['in'], true) ? false : filter($srch_val, $path, $filters['out'], true);  }  }
+			return filter($srch_val, $path, $filters['in'], $¿caseInsense, true) ? false : filter($srch_val, $path, $filters['out'], $¿caseInsense, true);  }  }
 
-Function filter($filename, $path, &$filter, $logic_bool)  {
+Function filter($filename, $path, &$filter, $¿caseInsense, $logic_bool)  {
 	//return TRUE if file is to be - ignored - EXCEPT “filter in or out” returns true if the file is filtered -in-
 	if (($path  and  ($isdir=is_dir($path))  and  $filter['pass_all_folders'])
 	or  in_array($filename, $filter['files'])
@@ -1565,8 +1643,8 @@ Function filter($filename, $path, &$filter, $logic_bool)  {
 		if (@preg_match($pcre, $name)
 		or  ($path  and  @preg_match($pcre, $path)))  return $logic_bool;  }
 	foreach ($filter['POSIX_wildcards'] as $wc)  {
-		if (@fnmatch($wc, $name, $_POST['CaseInsense'])
-		or  @fnmatch($wc, $path, $_POST['CaseInsense']))  return $logic_bool;  }
+		if (@fnmatch($wc, $name, $¿caseInsense)
+		or  @fnmatch($wc, $path, $¿caseInsense))  return $logic_bool;  }
 	return !$logic_bool;  }
 
 Function build_dir_tree($base, &$filepaths)  {
@@ -1584,7 +1662,7 @@ Function show_dir(&$tree, &$files, $verify, $show_size, $comingle=false, $expand
 	if (count($tree)==0)  {echo "<h2>—none—</h2>\n";  return;}
 	$html="";  ksort($tree, SORT_STRING);
 	echo $tabs,"<ul";
-	if ($verify)  echo " onchange='check_dir(this)' onmousedown='drag_entry(event)'";
+	if ($verify)  echo " onchange='check_dir(event, this)' onmousedown='drag_entry(event)'";
 	echo ">\n";
 	foreach ($tree as $path => $k)  {
 		if (is_array($k))  {  // $path is a sub-directory in this case
@@ -1593,21 +1671,21 @@ Function show_dir(&$tree, &$files, $verify, $show_size, $comingle=false, $expand
 			$size+=$dirSize;
 			$dirHTML=ob_get_clean();
 			echo $tabs, '<li class="expand">',$expander;
-			if ($verify)  echo '<label><input type="checkbox" onchange="check_all_in_dir(this)">';
+			if ($verify)  echo '<label><input type="checkbox" onchange="check_all_in_dir(event, this)">';
 			if ($show_size)  echo '<size>', sprintf('%10d', $dirSize), '</size>';
 			echo '<path>', htmlentities($path),DIRECTORY_SEPARATOR, '</path>';
 			if ($verify)  echo '</label>';
 			echo "\n", $dirHTML, $tabs,"</li>\n";
 			continue;  }
 		$html.= $tabs . '<li>';
-		if ($verify)  $html.= '<label><input type="checkbox" name="verified[' . $verify . '][]" value="' . htmlentities($files['paths'][$k]) . '">';
+		if ($verify)  $html.= '<label><input type="checkbox" name="verified[' . $verify . '][]" value="' . htmlentities($files['Paths'][$k]) . '">';
 		if ($show_size)  $html.='<size>'.sprintf('%10d', $files['sizes'][$k]).'</size>';
 		$size+=$files['sizes'][$k];
 		$class="";
 		if ($files['replaced'][$k]  AND  !is_string($files['destinations'][$k]))  $class.='replacement ';
 		if (substr($path, 0,1)===chr(24))  $class.='failed-copy';
 		if ($class)  $class=' class="'.$class.'"';
-		$html.= '<path' . $class . '>' . htmlentities($path) . '</path>';  // $files['names'][$k]
+		$html.= '<path' . $class . '>' . htmlentities($path) . '</path>';  // $files['Names'][$k]
 		if ($verify)  $html.= '</label>';
 		if (is_string($files['destinations'][$k]))
 			$html.= "\n".$tabs.'<div class="destiny"><path class="destiny'. ($files['replaced'][$k] ? ' replacement' : "") .'">' . htmlentities($files['destinations'][$k]) . '</path></div>';
@@ -1629,9 +1707,9 @@ Function syncdir($src_dir, $dest_dir, &$uniq, $¿keepOrgCreationTime, $¿removeT
 	$uniq['destinations']=array();
 	$uniq['replaced']=array();
 	$i=0;
-	$c=count($uniq['paths'])*$trackNumInc;
+	$c=count($uniq['Paths'])*$trackNumInc;
 	$trackDigits= ($c<10) ? 1 : (($c<100) ? 2 : (($c<1000) ? 3 : (($c<10000) ? 4 : 5)));
-	foreach ($uniq['paths'] as $k => &$path)  {
+	foreach ($uniq['Paths'] as $k => &$path)  {
 		$file=basename($path);  $dest_path=dirname($path).DIRECTORY_SEPARATOR;
 		if (substr($dest_path, 0, $sd_len)!==$src_dir)  throw new bad_form_data('internal error — Verified Pathname does not match Source Directory');
 		$subpath=substr($dest_path, $sd_len);
@@ -1651,15 +1729,22 @@ Function syncdir($src_dir, $dest_dir, &$uniq, $¿keepOrgCreationTime, $¿removeT
 
 // note this scheme will/may not work well with subfolders!
 Function adjustTrackNum(&$file, $¿remove, $¿add, $i, $trackDigits)  {
+	// the  ↓  space following a track number (or disk/track combo) is optional
 	//  "409 title_and_performer.wav"
 	//  "409. title_and_performer.wav"
 	//  "409- title_and_performer.wav"
 	//  "409 . title_and_performer.wav"
 	//  "409 - title_and_performer.wav"
+	//  "409.02 title_and_performer.wav"
+	//  "409-02 title_and_performer.wav"
 	//  "409) title_and_performer.wav"
+	//  "409.02) title_and_performer.wav"
+	//  "409-02) title_and_performer.wav"
 	//  "(409) title_and_performer.wav"
+	//  "(409.02) title_and_performer.wav"
+	//  "(409-02) title_and_performer.wav"
 	$¿adjusted=FALSE;
-	if ($¿remove  AND  preg_match('/^(\d+(?:\s?[-.])?|\(?\d+\))\s+/', $file, $matches))  {
+	if ($¿remove  AND  preg_match('/^(\d+(?:\s?[-.])?|\d+[-.]\d+|\(?\d+(?:[-.]\d+)?\))\s*/', $file, $matches))  {
 		$¿adjusted=TRUE;
 		$file=substr($file, strlen($matches[0]));  }
 	if ($¿add)  {
@@ -1712,24 +1797,24 @@ try {
 	$trackNumInc=  (max(1, min(100, round(floatval($_POST['trackNumInc'])))));
 
 	if (count($_POST['verified']['in_dir1'])>0)  {
-		$uniq=array('paths'=> &$_POST['verified']['in_dir1']);
+		$uniq=array('Paths'=> &$_POST['verified']['in_dir1']);
 		syncdir($_POST['verified']['dir1'], $_POST['verified']['dir2'], $uniq,
 						$_POST['preserveCreationTime']==='yes',
 						$_POST['removeTrackNums']==='yes',
 						$_POST['addTrackNums']==='yes',
 						$trackNumInc);
-		$tree=build_dir_tree($_POST['verified']['dir1'], $uniq['paths']);
-		show_dir($tree, $uniq, FALSE, FALSE,  $_POST['comingle']==='yes', "");  }
+		$tree=build_dir_tree($_POST['verified']['dir1'], $uniq['Paths']);
+		show_dir($tree, $uniq, FALSE, $_POST['show_sizes']==='yes',  $_POST['comingle']==='yes', "");  }
 
 	if (count($_POST['verified']['in_dir2'])>0)  {
-		$uniq=array('paths'=> &$_POST['verified']['in_dir2']);
+		$uniq=array('Paths'=> &$_POST['verified']['in_dir2']);
 		syncdir($_POST['verified']['dir2'], $_POST['verified']['dir1'], $uniq,
 						$_POST['preserveCreationTime']==='yes',
 						$_POST['removeTrackNums']==='yes',
 						$_POST['addTrackNums']==='yes',
 						$trackNumInc);
-		$tree=build_dir_tree($_POST['verified']['dir2'], $uniq['paths']);
-		show_dir($tree, $uniq, FALSE, FALSE, $_POST['comingle']==='yes', "");  }
+		$tree=build_dir_tree($_POST['verified']['dir2'], $uniq['Paths']);
+		show_dir($tree, $uniq, FALSE, $_POST['show_sizes']==='yes', $_POST['comingle']==='yes', "");  }
 
 	echo "</div>";
 
