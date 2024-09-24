@@ -1,6 +1,6 @@
 <?php  //  charset='UTF-8'   EOL: 'UNIX'   tab spacing=2 ¡important!   word-wrap: no
 	/*/ SyncDir.php   written by and Copyright © Joe Golembieski, SoftMoon WebWare
-					 ALPHA 1.4  September 14, 2024
+					 BETA 1.6  September 23, 2024
 
 		This program is licensed under the SoftMoon Humane Use License ONLY to “humane entities” that qualify under the terms of said license.
 		For qualified “humane entities”, this program is free software:
@@ -24,33 +24,13 @@
 			https://softmoon-webware.com/humane-use-license/
 			https://www.gnu.org/licenses/#AGPL    /*/
 
-/*  This ALPHA release has been tested on a Windows® NT system with Apache 2.0 and PHP version 7.1.6 ; 8.1.6 ; 8.2.12
+/*  This BETA release has been tested on a Windows® NT system with Apache 2.0 and PHP version 7.1.6 ; 8.1.6 ; 8.2.12
  *  I’ve been using it for a while mostly without problems, except:
- *  • I’ve seen my USB thumb-drive apparently overheat and become unresponsive.
- *   This is a hardware problem (video driver gets hot and heats up the metal-casing on the thumb-drive 1" away)
- *   and was solved by moving the thumb-drive to another USB port.
- *   However, PHP “locks-up” waiting for it, and I had to close the server and browser.
- *   It’s hard to know WHAT exactly PHP is doing…in that case I was transferring a large sum of data…
- *   was it going slow?  Five files copied (I could see in Windows® Explorer), then nothing,
- *   and the browser just said “waiting on the server”.
- *   Did a bug cause an endless loop?  Not in this case, but I was left guessing at first…
- *   Note the max_execution_time is set below so PHP will not stop automatically,
- *   so large filesets can be copied without PHP aborting before finishing.
- *   Adjust it as you see appropriate!
- *  • A few times the “verify first” option simply did not work.  WHY?  IDK!
- *   I didn’t have time to dig in and start logging everything PHP did, or even try again to do so.
- *   Other times it works perfectly.  Lately I have been using it almost exclusively, with no problems.
- *   When it fails, there is no error message, and the HTML interface seems normal.
- *   Just nothing gets synced/copied, as if you selected no files to sync/copy.
- *   I've looked at the code again and again, but did not see any reason why it might fail,
- *   other than the data did not transfer from the browser to PHP correctly for some reason.
- *   Playing with the filesystem while debugging is not something I want to do everyday,
- *   so IDK when I will look into that.
- *   I think I remember trying to sync many, many, many “verified first” files at once, and it failed.
- *   It worked when I only verified a few files, if that’s a hint.
- *   (update: I’ve been large-bulk copying with it lately with no problems)
- *   Debugging code that fails under unknown circumstances is tricky.
- *   Doing so while your code is continuously modifying the filesystem is a real PITA!
+ *  If there is a problem with the filesystem that causes it to “lock up”,
+ *  PHP just endlessly waits… (adjust the max_execution_time below).
+ *  This has happened twice to me due to hardware problems, not this software.
+ *  Both times the problem was solved by removing the USB drive.
+ *  Windows® was locked up also.
  *
  *  It’s never actually skrewed up anything in the filesystem, but use at your own risk!
 */
@@ -332,6 +312,8 @@ form#verifier {
 #verifier .replaced path {
 	padding-bottom: 0.162em;
 	border-bottom: 1px solid; }
+.destiny {
+	text-align: right; }
 
 #verifier div.similar,
 #verifier div.similar * {
@@ -624,7 +606,9 @@ function get_size_totals(event)  {
 function drag_entry(event)  {
 	if (event.target.nodeName==='INPUT'
 	||  event.target.closest('span.expand')
-	||  event.target.closest('span.collapse'))  return;
+	||  event.target.closest('span.collapse')
+	||  event.detail>1
+	||  event.button>0)  return;
 	const
 		ul=event.currentTarget,
 		li=event.target.closest("li"),
@@ -635,6 +619,7 @@ function drag_entry(event)  {
 	body.classList.add('dragging');
 	ul.classList.add('drag-target');
 	li.classList.add('drag-entry');
+	li.classList.remove('expanded');
 	body.addEventListener('mousemove', catsEye);
 	body.addEventListener('mouseup', drop);
 	catsEye(event);
@@ -918,7 +903,7 @@ catch (bad_form_data $e)  {$errorHTML="<h5>".$e->getMessage()."</h5>\n";}
 	pictures, music, etc.&nbsp;
 	<strong>Archive mode is only uni-directional (from folder2 <arrow>&#x21DB</arrow> to folder1).</strong>&nbsp;
 	It ignores files in the source directory/folder (and optionally its subfolders recursively)
-	that are found to match another file <em>anywhere</em> in the archive directory/folder or recursively its subfolders.&nbsp;
+	that are found to match another file <em>anywhere</em> in the archive directory/folder and recursively its subfolders.&nbsp;
 	However, archive files and subfolders are still subject to all “filters”,
 	and therefore may be either filtered out or not filtered in of consideration, depending on your “filter” options below.&nbsp;
 	Contrast “matching” files with “similar” files:
@@ -1729,14 +1714,15 @@ Function syncdir($src_dir, $dest_dir, &$uniq, $¿keepOrgCreationTime, $¿removeT
 
 // note this scheme will/may not work well with subfolders!
 Function adjustTrackNum(&$file, $¿remove, $¿add, $i, $trackDigits)  {
-	// the  ↓  space following a track number (or disk/track combo) is optional
+	//  the ↓ space following a track number digit must be present if not followed by . - )
 	//  "409 title_and_performer.wav"
+	//  "409.02 title_and_performer.wav"
+	//  "409-02 title_and_performer.wav"
+	//  the  ↓  space following a track number (or disk/track combo) is optional if the number is followed by . - )
 	//  "409. title_and_performer.wav"
 	//  "409- title_and_performer.wav"
 	//  "409 . title_and_performer.wav"
 	//  "409 - title_and_performer.wav"
-	//  "409.02 title_and_performer.wav"
-	//  "409-02 title_and_performer.wav"
 	//  "409) title_and_performer.wav"
 	//  "409.02) title_and_performer.wav"
 	//  "409-02) title_and_performer.wav"
@@ -1744,7 +1730,7 @@ Function adjustTrackNum(&$file, $¿remove, $¿add, $i, $trackDigits)  {
 	//  "(409.02) title_and_performer.wav"
 	//  "(409-02) title_and_performer.wav"
 	$¿adjusted=FALSE;
-	if ($¿remove  AND  preg_match('/^(\d+(?:\s?[-.])?|\d+[-.]\d+|\(?\d+(?:[-.]\d+)?\))\s*/', $file, $matches))  {
+	if ($¿remove  AND  preg_match('/^(?:\d+\s*[-.]\s*|\(?\d+(?:[-.]\d+)?\)\s*|\d+[-.]\d+[-.]\s*|\d+[-.]\d+\s+|\d+\s+)/', $file, $matches))  {
 		$¿adjusted=TRUE;
 		$file=substr($file, strlen($matches[0]));  }
 	if ($¿add)  {
@@ -1804,7 +1790,7 @@ try {
 						$_POST['addTrackNums']==='yes',
 						$trackNumInc);
 		$tree=build_dir_tree($_POST['verified']['dir1'], $uniq['Paths']);
-		show_dir($tree, $uniq, FALSE, $_POST['show_sizes']==='yes',  $_POST['comingle']==='yes', "");  }
+		show_dir($tree, $uniq, FALSE, FALSE, $_POST['comingle']==='yes', "");  }
 
 	if (count($_POST['verified']['in_dir2'])>0)  {
 		$uniq=array('Paths'=> &$_POST['verified']['in_dir2']);
@@ -1814,7 +1800,7 @@ try {
 						$_POST['addTrackNums']==='yes',
 						$trackNumInc);
 		$tree=build_dir_tree($_POST['verified']['dir2'], $uniq['Paths']);
-		show_dir($tree, $uniq, FALSE, $_POST['show_sizes']==='yes', $_POST['comingle']==='yes', "");  }
+		show_dir($tree, $uniq, FALSE, FALSE, $_POST['comingle']==='yes', "");  }
 
 	echo "</div>";
 
