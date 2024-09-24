@@ -1,19 +1,19 @@
-# syncdir.php
-synchronize, copy, &amp; compare filesystem folders / directories
+# SyncDir.php
+Synchronize, Copy, Archive, Create, &amp; Compare filesystem folders / directories
 
 # ¡ **Never** install on a publicly accessible server !
 ¡This program is designed to modify a (your) file system, copy files from ambiguous locations, overwrite existing files, etc.!
 ¡It has **NO** security implementations!
 It is designed for a private server, only to utilize PHP's file-system access.
 
-This **alpha** release has been tested in real-time use at various times in the past 3 years.
+This Beta release has been tested in real-time use at various times in the past 3 years.
 It it intended to:
 1. Keep a backup of "project folders" (and subfolders), only copying newly created or updated files within the same folder/directory tree structure.
 2. Synchronize project folders and subfolders when 2 (or more) folks are working on different files within, keeping the same folder/directory tree structure.
 3. Archive files from a source to a destination, with dis-similar folder/directory tree structures.
 4. Compare 2 folders and subfolders for similar files and folder/directory tree structures,
 		as well as similar files in dis-similar folder/directory tree structures.
-5. Create "playlists" on USB thumb-drives.
+5. Create "playlists" on USB thumb-drives for car radios, etc.
 
 # 1. Backup folders
 You can keep a backup of your folder in another location using this utility.
@@ -46,7 +46,7 @@ it will allow you to modify the sync-options and sync-filters until you get them
 # 5. Create USB thumb "playlists"
 Many car radios, etc., can play media files on a USB thumb-drive; just plug it in.
 But they don't let you modify the song order; the songs are played *in the order they were copied to the folder*.
-Windows' drag & drop bulk-copy doesn't guarantee this order; you must copy and then paste each file individually by hand to guarantee the order.
+Windows'® drag & drop bulk-copy doesn't guarantee this order; you must copy and then paste each file individually by hand to guarantee the order.
 Using syncdir.php, you have a few options to control the song-order:
 - make sure your song filenames start with a "track-number" (use 01, 02,...10, 11, etc. if more than 9 files),
 then copy (backup) them to your thumb-drive with the "sort files" option checked.
@@ -94,20 +94,20 @@ When syncdir.php shows you files to be / that have been synced, it will highligh
 
 When "similar files" are found, click on the ▼ down-arrow to see them, the ▲ up-arrow to hide them.
 
-When you are using Windows, files are already presented as sorted no matter what option you choose.
-Windows passes the sorted file order to PHP, but Linux does not.
-However, if you choose to override the "case insensitive" default for Windows and choose "case sensitive",
+When you are using Windows®, files are already presented as sorted no matter what option you choose.
+Windows® passes the sorted file order to PHP, but Linux does not.
+However, if you choose to override the "case insensitive" default for Windows® and choose "case sensitive",
 files may be re-ordered (uppercase comes before lowercase).
 
 DISCLAIMER:
-This ALPHA release has been tested on a Windows NT system with Apache 2.0 and PHP version 7.1.6 ; 8.1.6 ; 8.2.12
+This Beta release has been tested on a Windows® NT system with Apache 2.0 and PHP version 7.1.6 ; 8.1.6 ; 8.2.12
 I’ve been using it for a while mostly without problems, except:
 * I’ve seen my USB thumb-drive apparently overheat and become unresponsive.
  This is a hardware problem (video driver gets hot and heats up the metal-casing on the thumb-drive 1" away)
  and was solved by moving the thumb-drive to another USB port.
  However, PHP “locks-up” waiting for it, and I had to close the server and browser.
  It’s hard to know WHAT exactly PHP is doing…in that case I was transferring a large sum of data…
- was it going slow?  Five files copied (I could see in Windows Explorer), then nothing,
+ was it going slow?  Five files copied (I could see in Windows® Explorer), then nothing,
  and the browser just said “waiting on the server”.
 * Another time, something seemed to get whacked in the Windows® filesystem.
  I think my new USB drive doesn’t fit tight enough in the USB socket, or the socket may be wearing out.
