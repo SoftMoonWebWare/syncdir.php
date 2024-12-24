@@ -66,11 +66,13 @@ Otherwise, create each subfolder individually.
 - show file sizes
 - look for similar files
 - preserve file creation time
+- choose specific file creation time
 - sort files alphabetically when copying
 - co-mingle (or not) folders with files when sorting
 - remove existing track numbers
 - add track numbers
 - track number increment (when automatically adding track numbers)
+- track number start (when automatically adding track numbers)
 - move old overwritten files to a trash folder
 - various filtering options (filter in / filter out)
 * control the order and method of filter application
@@ -98,6 +100,23 @@ When you are using Windows®, files are already presented as sorted no matter wh
 Windows® passes the sorted file order to PHP, but Linux does not.
 However, if you choose to override the "case insensitive" default for Windows® and choose "case sensitive",
 files may be re-ordered (uppercase comes before lowercase).
+
+#Time Zones
+When you choose to specify a specific file creation time, you must make sure PHP knows the correct time zone.
+Your php.ini file should have a configuration:
+
+date.timezone
+
+You can find legal values for this ini setting here:
+
+https://www.php.net/manual/en/timezones.php
+
+These are the same legal values you can use when running SyncDir.php in the “time zone” section of the user-interface.
+If you don't have access to your php.ini file, or changing its date.timezone configuration does not work,
+you can hard-code your time-zone into the SyncDir.php file.
+Look at the beginning, just after the copyright notice for proper line - currently commented out.
+If you travel, you can also hard-code choices into the HTML at approx. lines 990—1000.
+
 
 DISCLAIMER:
 This Beta release has been tested on a Windows® NT system with Apache 2.0 and PHP version 7.1.6 ; 8.1.6 ; 8.2.12
