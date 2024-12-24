@@ -1,6 +1,6 @@
 <?php  //  charset='UTF-8'   EOL: 'UNIX'   tab spacing=2 ¡important!   word-wrap: no
 	/*/ SyncDir.php   written by and Copyright © Joe Golembieski, SoftMoon WebWare
-					 BETA 1.6  September 23, 2024
+					 BETA 1.7  December 23, 2024
 
 		This program is licensed under the SoftMoon Humane Use License ONLY to “humane entities” that qualify under the terms of said license.
 		For qualified “humane entities”, this program is free software:
@@ -35,6 +35,10 @@
  *  It’s never actually skrewed up anything in the filesystem, but use at your own risk!
 */
 
+
+//  ↓ ↓ ↓ for ease of use, you can customize this if you don't have access to your php.ini file
+//  ↓ ↓ ↓ or if your PHP installation for some reason ignores this ini setting in said file
+//ini_set("date.timezone", "");
 
 ini_set("max_execution_time", 0);  // 0 = ∞     1500 =25 min     1800 =30 min
 clearstatcache(true);
@@ -257,11 +261,14 @@ table {
 	border: 1px solid yellow;
 	width: 100%;
 	margin: 0 0 2em 0; }
+#filetime label,
 #options > fieldset:last-child label,
 #options div fieldset,
 #options div fieldset:last-child label:last-child,
 fieldset#Filter_Order label {
 	display: block; }
+#filetime label:last-of-type {
+	margin-left: 4em; }
 #sort_opts {
 	position: relative;
 	padding-right: 1.618em;
@@ -566,6 +573,11 @@ function align_archive_mode(event)  {
 		off.parentNode.classList.add('checked');
 		off.parentNode.previousElementSibling.classList.remove('checked');  }  }
 
+function align_time_inputs(inp)  {
+	if (inp.type!=='radio')  return;
+	const flag= inp.value!=='no-set';
+	document.querySelector('[name="creationDateTime"]').disabled=flag;
+	document.querySelector('[name="timezone"]').disabled=flag;  }
 
 function sync_verified_form(event)  {
 	const inp=document.querySelector('input[type="hidden"][name="'+event.target.name+'"]');
@@ -715,6 +727,7 @@ if (isset($_POST['submit']))  {   // WRAP MAIN PROCESSING SECTION **************
 	Class bad_form_data extends Exception {}
 
 
+
 //  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 if ($_POST['submit']==='verified')  {
 	goto Verified_Section;  // at file end
@@ -730,6 +743,8 @@ try {
 	if (substr($_POST['dir_2'], -1, 1)!==DIRECTORY_SEPARATOR)  $_POST['dir_2'].=DIRECTORY_SEPARATOR;
 	if (!is_dir($d=$_POST['dir_1'])  or  !is_dir($d=$_POST['dir_2']))
 		throw new bad_form_data("Bad Source or Destination Directory — Directory not found: ".$d);
+
+	process_common_inputs($¿keepCreationTime, $newCreationTime, $trackNumInc, $trackNumStart);  // ←values are returned
 
 	if (is_array($_POST['filter_in']['files']))  {
 		$_POST['filter_in']['super-folders']=array();
@@ -806,9 +821,12 @@ try {
 					'<input type="hidden" name="verified[dir2]" value="',htmlentities($_POST['dir_2']),"\">\n",
 					"<input type='hidden' name='verified[syncMethod]' value='{$_POST['sync_method']}'>\n",
 					"<input type='hidden' name='preserveCreationTime' value='{$_POST['preserveCreationTime']}'>\n",
+					"<input type='hidden' name='creationDateTime' value='{$_POST['creationDateTime']}'>\n",
+					"<input type='hidden' name='timezone' value='{$_POST['timezone']}'>\n",
 					"<input type='hidden' name='removeTrackNums' value='{$_POST['removeTrackNums']}'>\n",
 					"<input type='hidden' name='addTrackNums' value='{$_POST['addTrackNums']}'>\n",
 					"<input type='hidden' name='trackNumInc' value='{$_POST['trackNumInc']}'>\n",
+					"<input type='hidden' name='trackNumStart' value='{$_POST['trackNumStart']}'>\n",
 					"<input type='hidden' name='comingle' value='{$_POST['comingle']}'>\n",
 					"<input type='hidden' name='trash' value='{$_POST['trash']}'>\n",
 					"<input type='hidden' name='show_sizes' value='{$_POST['show_sizes']}'>\n";
@@ -816,7 +834,7 @@ try {
 	default: throw new bad_form_data("internal error: Bad Submit Method");  }
 
 	$filecount=0;
-	$trackNumInc=  (max(1, min(100, round(floatval($_POST['trackNumInc'])))));
+
 	switch ($_POST['sync_method'])  {
 	case "bi-directional":
 		echo "<h1>$h1 <path>",htmlentities($_POST['dir_1']),"</path> to <path>",htmlentities($_POST['dir_2']),"</path></h1>\n";
@@ -825,10 +843,10 @@ try {
 		if ($_POST['find_similar']==='yes')  find_misplaced($uniq, $dir2);
 		if ($_POST['submit']==="sync ’em")
 			syncdir($_POST['dir_1'], $_POST['dir_2'], $uniq,
-							$_POST['preserveCreationTime']==='yes',
+							$¿keepCreationTime, $newCreationTime,
 							$_POST['removeTrackNums']==='yes',
 							$_POST['addTrackNums']==='yes',
-							$trackNumInc);
+							$trackNumInc, $trackNumStart);
 		$tree=build_dir_tree($_POST['dir_1'], $uniq['Paths']);
 		show_dir($tree, $uniq,
 						 $_POST['submit']==='verify first' ? 'in_dir1' : FALSE,
@@ -842,10 +860,10 @@ try {
 		if ($_POST['find_similar']==='yes')  find_misplaced($uniq, $dir1);
 		if ($_POST['submit']==="sync ’em")
 			syncdir($_POST['dir_2'], $_POST['dir_1'], $uniq,
-							$_POST['preserveCreationTime']==='yes',
+							$¿keepCreationTime, $newCreationTime,
 							$_POST['removeTrackNums']==='yes',
 							$_POST['addTrackNums']==='yes',
-							$trackNumInc);
+							$trackNumInc, $trackNumStart);
 		$tree=build_dir_tree($_POST['dir_2'], $uniq['Paths']);
 		show_dir($tree, $uniq,
 						 $_POST['submit']==='verify first' ? 'in_dir2' : FALSE,
@@ -955,11 +973,34 @@ catch (bad_form_data $e)  {$errorHTML="<h5>".$e->getMessage()."</h5>\n";}
 	<label><input type='radio' name='show_sizes' value='no' <?php
 		if ($_POST['show_sizes']=="no")  echo CHKD; ?>>No</label>
 	</fieldset>
-	<fieldset onchange='sync_verified_form(event)'><legend>Preserve original file “last-modified” time for copied file?</legend>
+	<fieldset id='filetime' onchange='sync_verified_form(event); align_time_inputs(event.target);'>
+	<legend>Preserve original file “last-modified” time for copied file?</legend>
 	<label><input type='radio' name='preserveCreationTime' value='yes' <?php
-		if ($_POST['preserveCreationTime']!="no")  echo CHKD; ?>>Yes</label>
-	<label><input type='radio' name='preserveCreationTime' value='no' <?php
-		if ($_POST['preserveCreationTime']=="no")  echo CHKD; ?>>No</label>
+		if (!str_starts_with($_POST['preserveCreationTime'], "no"))  echo CHKD; ?>>Yes</label>
+	<label><input type='radio' name='preserveCreationTime' value='no-current' <?php
+		if ($_POST['preserveCreationTime']=="no-current")  echo CHKD; ?>>No - use current time</label>
+	<label><input type='radio' name='preserveCreationTime' value='no-set' <?php
+		if ($_POST['preserveCreationTime']=="no-set")  echo CHKD; ?>>No - use this time:
+		<input type='datetime-local' name='creationDateTime' value='<?php echo $_POST["creationDateTime"]; ?>'></label>
+	<label>in this time zone:<input type='text' list='tzones' name='timezone' value='<?php
+		if ($_POST['timezone'])  echo $_POST['timezone'];
+		else  echo date_default_timezone_get();	?>'>
+		<a class='helplink' href="https://www.php.net/manual/en/timezones.php" target='php'>☻</a></label>
+	<datalist id='tzones'>
+		<option value='<?php echo date_default_timezone_get()?>'></option>
+		<option value='America/Denver'>America/Albuquerque</option>
+		<option value='America/New_York'>America/Atlanta</option>
+		<option value='America/Chicago'></option>
+		<option value='America/Denver'></option>
+		<option value='America/Detroit'></option>
+		<option value='America/Los_Angeles'></option>
+		<option value='America/Chicago'>America/Minnesota</option>
+		<option value='America/Denver'>America/Montana</option>
+		<option value='America/New_York'></option>
+		<option value='America/Phoenix'></option>
+		<option value='America/Puerto_Rico'></option>
+		<option value='America/Los_Angeles'>America/Seattle</option>
+	</datalist>
 	</fieldset>
 	<div id='sort_opts'>
 		<fieldset><legend>Sort the copied files?</legend>
@@ -970,7 +1011,7 @@ catch (bad_form_data $e)  {$errorHTML="<h5>".$e->getMessage()."</h5>\n";}
 		</fieldset>
 		<label><input type='checkbox' name='comingle' value='yes' onchange='sync_verified_form(event)'<?php
 			if ($_POST['comingle']=="yes")  echo CHKD; ?>>Comingle folders with files?</label>
-		<help onmouseenter='keep_help_visible(event)'><span>☻</span><p>These features are for car radios and such
+		<help onmouseenter='keep_help_visible(event)'><p>These features are for car radios and such
 		that play songs in the order they were physically copied to a <abbr>USB</abbr> thumb-drive.&nbsp;
 		If you choose to “verify first” before copying,
 		you may further hand-sort the order files are <strong><em>physically copied</em></strong>
@@ -991,6 +1032,8 @@ catch (bad_form_data $e)  {$errorHTML="<h5>".$e->getMessage()."</h5>\n";}
 			if ($_POST['addTrackNums']=="yes")  echo CHKD; ?>>Yes: </label>
 		<label>increment: <input type='number' name='trackNumInc' min='1' max='100' step='1' size='7' value='<?php
 			echo  is_numeric($_POST['trackNumInc']) ? $_POST['trackNumInc'] : "1"; ?>'></label>
+		<label>begin at: <input type='number' name='trackNumStart' min='0' step='1' size='7' value='<?php
+			echo  is_numeric($_POST['trackNumStart']) ? $_POST['trackNumStart'] : "1"; ?>'></label>
 		<label><input type='radio' name='addTrackNums' value='no' <?php
 			if ($_POST['addTrackNums']!="yes")  echo CHKD; ?>>No</label>
 		</fieldset>
@@ -1419,20 +1462,41 @@ for (const inp of document.querySelectorAll('input[type="radio"]'))  {
 const comingleInp= document.querySelector('input[name="comingle"]');
 comingleInp.parentNode.classList.toggle('checked', comingleInp.checked);
 
+align_time_inputs(document.querySelector('input[name="preserveCreationTime"]:checked'));
 align_filterTables();
 
-document.body.addEventListener('change', function(event) {
+document.body.addEventListener('change', function(event)  {
 	if (event.target===comingleInp)  {
 		comingleInp.parentNode.classList.toggle('checked', comingleInp.checked);
 		return;  }
 	if (event.target.type!=='radio')  return;
 	for (const inp of event.target.closest('fieldset').elements)  {
-		inp.parentNode.classList.toggle('checked', inp.checked);  }  });
+		if (inp.type==='radio')  inp.parentNode.classList.toggle('checked', inp.checked);  }  });
 </script>
 </body>
 </html>
 
 <?php  exit;
+
+Function process_common_inputs(&$¿keepCreationTime, &$newCreationTime, &$trackNumInc, &$trackNumStart)  {
+  if ($_POST['timezone']  and  !date_default_timezone_set($_POST['timezone']))
+		throw new bad_form_data("Invalid time-zone: ".$_POST['timezone']);
+
+	$¿keepCreationTime= ($_POST['preserveCreationTime']==='yes');
+	if ($_POST['preserveCreationTime']==='no-set'  and  $_POST['creationDateTime'])  {
+		// see:  https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/datetime-local
+		switch(strlen($_POST['creationDateTime']))  {
+			case 16: $_POST['creationDateTime']= $_POST['creationDateTime'].":00";
+			case 19: $_POST['creationDateTime']= $_POST['creationDateTime'].".00";  }
+		$newCreationTime= date_create_immutable_from_format(
+			"Y-m-d H:i:s.v", str_replace("T", " ", $_POST['creationDateTime']) );
+		if ($newCreationTime)  $newCreationTime=$newCreationTime->getTimestamp();
+		else  throw new bad_form_data('Invalid file creation time: '.$_POST['creationDateTime']);  }
+	else  $newCreationTime=null;
+
+	$trackNumInc=  max(1, min(100, round(floatval($_POST['trackNumInc']))));
+	$trackNumStart=max(0, round(floatval($_POST['trackNumStart'])));  }
+
 
 Function ¿checkIt($fltr, $value, $dflt=FALSE)  {
 	if (($dflt  and  !is_array($_POST[$fltr]['exts']))
@@ -1687,12 +1751,13 @@ Function show_dir(&$tree, &$files, $verify, $show_size, $comingle=false, $expand
 	return $size;  }
 
 
-Function syncdir($src_dir, $dest_dir, &$uniq, $¿keepOrgCreationTime, $¿removeTrackNums, $¿addTrackNums, $trackNumInc=1)  {
+Function syncdir($src_dir, $dest_dir, &$uniq, $¿keepOrgCreationTime, $newCreationTime,
+								 $¿removeTrackNums, $¿addTrackNums, $trackNumInc=1, $trackNumStart=1)  {
 	$sd_len=strlen($src_dir);
 	$uniq['destinations']=array();
 	$uniq['replaced']=array();
-	$i=0;
-	$c=count($uniq['Paths'])*$trackNumInc;
+	$i=$trackNumStart-$trackNumInc;
+	$c=$trackNumStart+count($uniq['Paths'])*$trackNumInc;
 	$trackDigits= ($c<10) ? 1 : (($c<100) ? 2 : (($c<1000) ? 3 : (($c<10000) ? 4 : 5)));
 	foreach ($uniq['Paths'] as $k => &$path)  {
 		$file=basename($path);  $dest_path=dirname($path).DIRECTORY_SEPARATOR;
@@ -1708,6 +1773,7 @@ Function syncdir($src_dir, $dest_dir, &$uniq, $¿keepOrgCreationTime, $¿removeT
 		// note if copy fails, any matching file at the destination was still trashed!
 		if (copy($path, $dest))  {
 			if ($¿keepOrgCreationTime)  touch($dest, filemtime($path));
+			else if ($newCreationTime)  touch($dest, $newCreationTime);
 			$uniq['destinations'][$k]=($¿adjusted ? $file : FALSE);  }
 		else  $path=chr(24).$path;  }  //  ASCII CAN  “cancel”
 	return $uniq;  }
@@ -1774,37 +1840,37 @@ try {
 	$_POST['verified']['in_dir1']=check_array($_POST['verified']['in_dir1'], PATH, "internal error - Bad Verified File path");
 	$_POST['verified']['in_dir2']=check_array($_POST['verified']['in_dir2'], PATH, "internal error - Bad Verified File path");
 
+	process_common_inputs($¿keepCreationTime, $newCreationTime, $trackNumInc, $trackNumStart);  // ←values are returned
+
 	echo "<div id='verified'><h1>Verified Files Synchronized ",
 		($_POST['verified']['syncMethod']==="bi-directional") ? "between" : "from",
 		"<path>",htmlentities($_POST['verified']['dir2']),"</path>",
 		($_POST['verified']['syncMethod']==="bi-directional") ? "and" : "to",
 		"<path>",htmlentities($_POST['verified']['dir1']),"</path></h1>\n";
 
-	$trackNumInc=  (max(1, min(100, round(floatval($_POST['trackNumInc'])))));
-
 	if (count($_POST['verified']['in_dir1'])>0)  {
 		$uniq=array('Paths'=> &$_POST['verified']['in_dir1']);
 		syncdir($_POST['verified']['dir1'], $_POST['verified']['dir2'], $uniq,
-						$_POST['preserveCreationTime']==='yes',
+						$¿keepCreationTime, $newCreationTime,
 						$_POST['removeTrackNums']==='yes',
 						$_POST['addTrackNums']==='yes',
-						$trackNumInc);
+						$trackNumInc, $trackNumStart);
 		$tree=build_dir_tree($_POST['verified']['dir1'], $uniq['Paths']);
 		show_dir($tree, $uniq, FALSE, FALSE, $_POST['comingle']==='yes', "");  }
 
 	if (count($_POST['verified']['in_dir2'])>0)  {
 		$uniq=array('Paths'=> &$_POST['verified']['in_dir2']);
 		syncdir($_POST['verified']['dir2'], $_POST['verified']['dir1'], $uniq,
-						$_POST['preserveCreationTime']==='yes',
+						$¿keepCreationTime, $newCreationTime,
 						$_POST['removeTrackNums']==='yes',
 						$_POST['addTrackNums']==='yes',
-						$trackNumInc);
+						$trackNumInc, $trackNumStart);
 		$tree=build_dir_tree($_POST['verified']['dir2'], $uniq['Paths']);
 		show_dir($tree, $uniq, FALSE, FALSE, $_POST['comingle']==='yes', "");  }
 
 	echo "</div>";
 
-} catch (bad_form_data $e)  {echo "<h5>", $e->getMessage(), "</h5>\n";}
+} catch (bad_form_data $e)  {echo "<h5>", $e->getMessage(), "</h5>\nTry the browser’s “back” button.";}
 ?>
 </body>
 </html>
